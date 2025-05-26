@@ -83,7 +83,7 @@ export default function ReceiveScreen() {
     }
   };
 
-  const handleSelectCrypto = (crypto) => {
+  const handleSelectCrypto = (crypto: typeof addresses[number]) => {
     setSelectedCrypto(crypto);
     toggleCurrencyOptions();
   };

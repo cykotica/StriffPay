@@ -27,6 +27,7 @@ import {
   PiggyBank
 } from 'lucide-react-native';
 import Button from '@/components/Button';
+import { useRouter } from 'expo-router';
 
 // Mock data
 const transactions = [
@@ -93,6 +94,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [balanceVisible, setBalanceVisible] = useState(true);
+  const router = useRouter();
 
   // Header animations
   const headerOpacity = scrollY.interpolate({
@@ -137,7 +139,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hello, Michael</Text>
+            <Text style={styles.greeting}>Hello, Investor</Text>
             <TouchableOpacity
               onPress={() => setBalanceVisible(!balanceVisible)}
               style={styles.balanceContainer}
@@ -160,32 +162,32 @@ export default function HomeScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.primary }]}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/send')}>
+            <View style={[styles.actionButtonIcon, { backgroundColor: colors.primary }]}> 
               <Send size={20} color={colors.white} />
             </View>
             <Text style={styles.actionButtonText}>Send</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.secondary }]}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/receive')}>
+            <View style={[styles.actionButtonIcon, { backgroundColor: colors.secondary }]}> 
               <ArrowDownToLine size={20} color={colors.white} />
             </View>
             <Text style={styles.actionButtonText}>Receive</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.success }]}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/card')}>
+            <View style={[styles.actionButtonIcon, { backgroundColor: colors.success }]}> 
               <CreditCard size={20} color={colors.white} />
             </View>
             <Text style={styles.actionButtonText}>Card</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.accent }]}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('staking' as any)}>
+            <View style={[styles.actionButtonIcon, { backgroundColor: colors.accent }]}> 
               <PiggyBank size={20} color={colors.white} />
             </View>
-            <Text style={styles.actionButtonText}>Stake</Text>
+            <Text style={styles.actionButtonText}>Staking</Text>
           </TouchableOpacity>
         </View>
 

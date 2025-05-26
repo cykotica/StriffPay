@@ -6,6 +6,7 @@ import {
   ScrollView, 
   TouchableOpacity,
   Switch,
+  Dimensions,
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
@@ -53,6 +54,18 @@ const menuItems = [
         icon: DollarSign, 
         route: '/deposit'
       },
+      { 
+        id: 'staking-detail', 
+        name: 'Staking Detail', 
+        icon: PiggyBank, 
+        route: '/staking-detail'
+      },
+      { 
+        id: 'staked-detail', 
+        name: 'Staked Detail', 
+        icon: PiggyBank, 
+        route: '/staked-detail'
+      },
     ]
   },
   {
@@ -99,13 +112,17 @@ const menuItems = [
       },
       { 
         id: 'about', 
-        name: 'About CryptoPay', 
+        name: 'About StriffPay', 
         icon: Heart, 
         route: '/about'
       },
     ]
   }
 ];
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isSmallScreen = SCREEN_WIDTH < 375;
+const isMediumScreen = SCREEN_WIDTH < 430;
 
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
@@ -114,7 +131,7 @@ export default function MoreScreen() {
     darkMode: false,
   });
 
-  const handleToggle = (id) => {
+  const handleToggle = (id: 'notifications' | 'darkMode') => {
     setToggles(prev => ({
       ...prev,
       [id]: !prev[id],
@@ -141,7 +158,7 @@ export default function MoreScreen() {
         {/* Profile Card */}
         <TouchableOpacity 
           style={styles.profileCard}
-          onPress={() => router.push('/profile')}
+          onPress={() => router.push('/profile' as any)}
         >
           <View style={styles.profileAvatar}>
             <Text style={styles.profileInitials}>MS</Text>
@@ -165,25 +182,31 @@ export default function MoreScreen() {
                     styles.menuItem,
                     itemIndex !== section.items.length - 1 && styles.menuItemBorder,
                   ]}
-                  onPress={() => item.toggle ? handleToggle(item.id) : router.push(item.route)}
+                  onPress={() => {
+                    if ('toggle' in item && item.toggle) {
+                      handleToggle(item.id as 'notifications' | 'darkMode');
+                    } else if ('route' in item && item.route) {
+                      router.push(item.route as any);
+                    }
+                  }}
                 >
                   <View style={styles.menuItemLeft}>
                     <View style={[styles.menuItemIcon, { backgroundColor: getIconBackground(item.id) }]}>
                       <item.icon size={20} color={getIconColor(item.id)} />
                     </View>
                     <Text style={styles.menuItemText}>{item.name}</Text>
-                    {item.badge && (
+                    {('badge' in item && item.badge) && (
                       <View style={styles.menuItemBadge}>
                         <Text style={styles.menuItemBadgeText}>{item.badge}</Text>
                       </View>
                     )}
                   </View>
-                  {item.toggle ? (
+                  {('toggle' in item && item.toggle) ? (
                     <Switch
-                      value={toggles[item.id]}
-                      onValueChange={() => handleToggle(item.id)}
-                      trackColor={{ false: colors.lightGrey, true: colors.primary + '80' }}
-                      thumbColor={toggles[item.id] ? colors.primary : colors.white}
+                      value={toggles[item.id as 'notifications' | 'darkMode']}
+                      onValueChange={() => handleToggle(item.id as 'notifications' | 'darkMode')}
+                      trackColor={{ false: colors.lightGrey, true: colors.primary }}
+                      thumbColor={toggles[item.id as 'notifications' | 'darkMode'] ? colors.primary : colors.white}
                       ios_backgroundColor={colors.lightGrey}
                     />
                   ) : (
@@ -213,7 +236,7 @@ export default function MoreScreen() {
 }
 
 // Helper function to get icon background color
-const getIconBackground = (id) => {
+const getIconBackground = (id: string) => {
   switch (id) {
     case 'profile':
     case 'settings':
@@ -238,7 +261,7 @@ const getIconBackground = (id) => {
 };
 
 // Helper function to get icon color
-const getIconColor = (id) => {
+const getIconColor = (id: string) => {
   switch (id) {
     case 'profile':
     case 'settings':
@@ -271,42 +294,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: layout.spacing.xl,
-    paddingBottom: layout.spacing.md,
+    paddingHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
+    paddingBottom: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
     backgroundColor: colors.white,
     ...layout.shadow.sm,
   },
   headerTitle: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.xl,
+    fontSize: isSmallScreen ? fonts.lg : fonts.xl,
     color: colors.text,
   },
   scrollContent: {
-    paddingHorizontal: layout.spacing.xl,
-    paddingVertical: layout.spacing.xl,
-    paddingBottom: layout.spacing.xxxl,
+    paddingHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
+    paddingVertical: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
+    paddingBottom: isSmallScreen ? layout.spacing.xl : layout.spacing.xxxl,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
-    padding: layout.spacing.lg,
-    marginBottom: layout.spacing.xl,
+    padding: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
+    marginBottom: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
     ...layout.shadow.sm,
   },
   profileAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: isSmallScreen ? 44 : 60,
+    height: isSmallScreen ? 44 : 60,
+    borderRadius: isSmallScreen ? 22 : 30,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: layout.spacing.lg,
+    marginRight: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
   },
   profileInitials: {
     fontFamily: fonts.bold,
-    fontSize: fonts.xl,
+    fontSize: isSmallScreen ? fonts.lg : fonts.xl,
     color: colors.white,
   },
   profileInfo: {
@@ -314,23 +337,23 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.lg,
+    fontSize: isSmallScreen ? fonts.md : fonts.lg,
     color: colors.text,
     marginBottom: layout.spacing.xxs,
   },
   profileEmail: {
     fontFamily: fonts.regular,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     color: colors.textSecondary,
   },
   menuSection: {
-    marginBottom: layout.spacing.xl,
+    marginBottom: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
   },
   menuSectionTitle: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.text,
-    marginBottom: layout.spacing.sm,
+    marginBottom: isSmallScreen ? layout.spacing.xs : layout.spacing.sm,
     paddingHorizontal: layout.spacing.sm,
   },
   menuCard: {
@@ -343,7 +366,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: layout.spacing.lg,
+    padding: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
   },
   menuItemBorder: {
     borderBottomWidth: 1,
@@ -355,22 +378,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: isSmallScreen ? 28 : 36,
+    height: isSmallScreen ? 28 : 36,
+    borderRadius: isSmallScreen ? 14 : 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: layout.spacing.md,
+    marginRight: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
   },
   menuItemText: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.text,
     flex: 1,
   },
   menuItemBadge: {
     backgroundColor: colors.success + '20',
-    paddingHorizontal: layout.spacing.sm,
+    paddingHorizontal: isSmallScreen ? layout.spacing.xs : layout.spacing.sm,
     paddingVertical: layout.spacing.xxs,
     borderRadius: layout.radius.sm,
     marginLeft: layout.spacing.sm,
@@ -386,19 +409,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
-    padding: layout.spacing.lg,
-    marginBottom: layout.spacing.lg,
+    padding: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
+    marginBottom: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
     ...layout.shadow.sm,
   },
   logoutText: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.error,
     marginLeft: layout.spacing.sm,
   },
   versionText: {
     fontFamily: fonts.regular,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     color: colors.textSecondary,
     textAlign: 'center',
   },

@@ -8,6 +8,7 @@ import {
   Image,
   Animated,
   FlatList,
+  Dimensions,
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
@@ -82,6 +83,10 @@ const tabs = [
   { id: 'rewards', name: 'Rewards' },
 ];
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isSmallScreen = SCREEN_WIDTH < 375;
+const isMediumScreen = SCREEN_WIDTH < 430;
+
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const [selectedTab, setSelectedTab] = useState('assets');
@@ -122,14 +127,14 @@ export default function WalletScreen() {
               title="Deposit"
               variant="outline"
               onPress={() => {}}
-              style={[styles.balanceButton, { borderColor: colors.white }]}
+              style={{ ...styles.balanceButton, borderColor: colors.white }}
               textStyle={{ color: colors.white }}
             />
             <Button
               title="Withdraw"
               variant="outline"
               onPress={() => {}}
-              style={[styles.balanceButton, { borderColor: colors.white }]}
+              style={{ ...styles.balanceButton, borderColor: colors.white }}
               textStyle={{ color: colors.white }}
             />
           </View>
@@ -299,30 +304,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: layout.spacing.xl,
-    paddingBottom: layout.spacing.md,
+    paddingHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
+    paddingBottom: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
     backgroundColor: colors.white,
     ...layout.shadow.sm,
   },
   headerTitle: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.xl,
+    fontSize: isSmallScreen ? fonts.lg : fonts.xl,
     color: colors.text,
   },
   filterButton: {
-    width: 40,
-    height: 40,
+    width: isSmallScreen ? 32 : 40,
+    height: isSmallScreen ? 32 : 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.extraLightGrey,
   },
   scrollContent: {
-    paddingBottom: layout.spacing.xxxl,
+    paddingBottom: isSmallScreen ? layout.spacing.xl : layout.spacing.xxxl,
   },
   balanceCard: {
-    margin: layout.spacing.xl,
-    padding: layout.spacing.xl,
+    margin: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
+    padding: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
     backgroundColor: colors.primary,
     borderRadius: layout.radius.lg,
     ...layout.shadow.md,
@@ -333,14 +338,14 @@ const styles = StyleSheet.create({
   },
   balanceHeader: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.white,
     opacity: 0.9,
     marginRight: layout.spacing.xs,
   },
   balanceValue: {
     fontFamily: fonts.bold,
-    fontSize: fonts.display,
+    fontSize: isSmallScreen ? fonts.xxl : fonts.display,
     color: colors.white,
     marginTop: layout.spacing.sm,
     marginBottom: layout.spacing.xs,
@@ -348,11 +353,11 @@ const styles = StyleSheet.create({
   balanceChangeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: layout.spacing.lg,
+    marginBottom: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
   },
   balanceChange: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.success,
     marginLeft: layout.spacing.xs,
   },
@@ -363,11 +368,12 @@ const styles = StyleSheet.create({
   balanceButton: {
     flex: 1,
     marginHorizontal: layout.spacing.xs,
+    minWidth: isSmallScreen ? 80 : 100,
   },
   tabsContainer: {
     flexDirection: 'row',
-    marginHorizontal: layout.spacing.xl,
-    marginBottom: layout.spacing.lg,
+    marginHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
+    marginBottom: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
     borderRadius: layout.radius.md,
     overflow: 'hidden',
     backgroundColor: colors.white,
@@ -375,7 +381,7 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: layout.spacing.md,
+    paddingVertical: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
     alignItems: 'center',
   },
   activeTab: {
@@ -383,7 +389,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.text,
   },
   activeTabText: {
@@ -391,8 +397,8 @@ const styles = StyleSheet.create({
   },
   searchSortContainer: {
     flexDirection: 'row',
-    marginHorizontal: layout.spacing.xl,
-    marginBottom: layout.spacing.lg,
+    marginHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
+    marginBottom: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
   },
   searchContainer: {
     flex: 1,
@@ -400,8 +406,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: layout.radius.md,
-    paddingHorizontal: layout.spacing.md,
-    paddingVertical: layout.spacing.sm,
+    paddingHorizontal: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
+    paddingVertical: isSmallScreen ? layout.spacing.xs : layout.spacing.sm,
     marginRight: layout.spacing.md,
     ...layout.shadow.sm,
   },
@@ -410,7 +416,7 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     fontFamily: fonts.regular,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.grey,
   },
   sortContainer: {
@@ -418,23 +424,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: layout.radius.md,
-    paddingHorizontal: layout.spacing.md,
-    paddingVertical: layout.spacing.sm,
+    paddingHorizontal: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
+    paddingVertical: isSmallScreen ? layout.spacing.xs : layout.spacing.sm,
     ...layout.shadow.sm,
   },
   sortText: {
     fontFamily: fonts.medium,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     color: colors.primary,
     marginRight: layout.spacing.xs,
   },
   coinsContainer: {
-    marginHorizontal: layout.spacing.xl,
+    marginHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
   },
   coinCard: {
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
-    padding: layout.spacing.lg,
+    padding: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
     marginBottom: layout.spacing.md,
     ...layout.shadow.sm,
   },
@@ -449,8 +455,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   coinImageContainer: {
-    width: 40,
-    height: 40,
+    width: isSmallScreen ? 32 : 40,
+    height: isSmallScreen ? 32 : 40,
     borderRadius: 20,
     backgroundColor: colors.extraLightGrey,
     justifyContent: 'center',
@@ -459,16 +465,16 @@ const styles = StyleSheet.create({
   },
   coinSymbolPlaceholder: {
     fontFamily: fonts.bold,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
   },
   coinName: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.text,
   },
   coinSymbol: {
     fontFamily: fonts.regular,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     color: colors.textSecondary,
   },
   coinChangeContainer: {
@@ -480,7 +486,7 @@ const styles = StyleSheet.create({
   },
   coinChange: {
     fontFamily: fonts.medium,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     marginLeft: layout.spacing.xxs,
   },
   coinDetails: {
@@ -492,18 +498,18 @@ const styles = StyleSheet.create({
   },
   coinLabel: {
     fontFamily: fonts.regular,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     color: colors.textSecondary,
     marginBottom: layout.spacing.xxs,
   },
   coinAmount: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.text,
   },
   coinValue: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.text,
   },
   addCoinButton: {
@@ -512,7 +518,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: layout.radius.md,
-    paddingVertical: layout.spacing.md,
+    paddingVertical: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
     borderWidth: 1,
     borderColor: colors.lightGrey,
     borderStyle: 'dashed',
@@ -520,22 +526,22 @@ const styles = StyleSheet.create({
   },
   addCoinText: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.primary,
     marginLeft: layout.spacing.xs,
   },
   transactionsContainer: {
-    marginHorizontal: layout.spacing.xl,
+    marginHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
   },
   transactionsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: layout.spacing.lg,
+    marginBottom: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
   },
   transactionsTitle: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.lg,
+    fontSize: isSmallScreen ? fonts.md : fonts.lg,
     color: colors.text,
   },
   transactionsFilterContainer: {
@@ -543,42 +549,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: layout.radius.md,
-    paddingHorizontal: layout.spacing.md,
-    paddingVertical: layout.spacing.xs,
+    paddingHorizontal: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
+    paddingVertical: isSmallScreen ? layout.spacing.xxs : layout.spacing.xs,
     ...layout.shadow.sm,
   },
   transactionsFilter: {
     fontFamily: fonts.medium,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     color: colors.primary,
     marginHorizontal: layout.spacing.xs,
   },
   emptyTransactions: {
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
-    padding: layout.spacing.xl,
+    padding: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
     alignItems: 'center',
     ...layout.shadow.sm,
   },
   emptyTransactionsText: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.lg,
+    fontSize: isSmallScreen ? fonts.md : fonts.lg,
     color: colors.text,
     marginBottom: layout.spacing.xs,
   },
   emptyTransactionsSubtext: {
     fontFamily: fonts.regular,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.textSecondary,
     textAlign: 'center',
   },
   rewardsContainer: {
-    marginHorizontal: layout.spacing.xl,
+    marginHorizontal: isSmallScreen ? layout.spacing.lg : layout.spacing.xl,
   },
   rewardCard: {
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
-    padding: layout.spacing.lg,
+    padding: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
     marginBottom: layout.spacing.lg,
     ...layout.shadow.sm,
   },
@@ -590,33 +596,33 @@ const styles = StyleSheet.create({
   },
   rewardTitle: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.lg,
+    fontSize: isSmallScreen ? fonts.md : fonts.lg,
     color: colors.text,
   },
   rewardAction: {
     backgroundColor: colors.primaryLight + '20',
-    paddingHorizontal: layout.spacing.md,
-    paddingVertical: layout.spacing.xs,
+    paddingHorizontal: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
+    paddingVertical: isSmallScreen ? layout.spacing.xxs : layout.spacing.xs,
     borderRadius: layout.radius.md,
   },
   rewardActionText: {
     fontFamily: fonts.medium,
-    fontSize: fonts.sm,
+    fontSize: isSmallScreen ? fonts.xs : fonts.sm,
     color: colors.primary,
   },
   rewardInfo: {
     alignItems: 'center',
-    marginVertical: layout.spacing.lg,
+    marginVertical: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
   },
   rewardAmount: {
     fontFamily: fonts.bold,
-    fontSize: fonts.xxxl,
+    fontSize: isSmallScreen ? fonts.xl : fonts.xxxl,
     color: colors.success,
     marginBottom: layout.spacing.xs,
   },
   rewardDescription: {
     fontFamily: fonts.regular,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.textSecondary,
   },
   rewardRateContainer: {
@@ -624,31 +630,31 @@ const styles = StyleSheet.create({
   },
   rewardRateTitle: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.lg,
+    fontSize: isSmallScreen ? fonts.md : fonts.lg,
     color: colors.text,
     marginBottom: layout.spacing.md,
   },
   rewardRateCard: {
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
-    padding: layout.spacing.lg,
+    padding: isSmallScreen ? layout.spacing.md : layout.spacing.lg,
     ...layout.shadow.sm,
   },
   rewardRateItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: layout.spacing.md,
+    paddingVertical: isSmallScreen ? layout.spacing.sm : layout.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.extraLightGrey,
   },
   rewardRateCoin: {
     fontFamily: fonts.medium,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.text,
   },
   rewardRateValue: {
     fontFamily: fonts.semiBold,
-    fontSize: fonts.md,
+    fontSize: isSmallScreen ? fonts.sm : fonts.md,
     color: colors.success,
   },
 });

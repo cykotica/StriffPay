@@ -96,7 +96,7 @@ export default function SendScreen() {
     }
   };
 
-  const handleSelectRecipient = (rec) => {
+  const handleSelectRecipient = (rec: { id: string; name: string; address: string; initial: string; color: string }) => {
     setRecipient(rec.address);
   };
 
@@ -298,10 +298,10 @@ export default function SendScreen() {
                 <View style={styles.totalContainer}>
                   <Text style={styles.totalLabel}>Total Amount</Text>
                   <Text style={styles.totalValue}>
-                    {amount ? (parseFloat(amount) + 0.0001).toFixed(4) : '0.0000'} {selectedCrypto.symbol}
+                    ≈ ${amount ? ((parseFloat(amount) + 0.0001) * 45000).toFixed(2) : '0.00'}
                   </Text>
                   <Text style={styles.totalValueUsd}>
-                    ≈ ${amount ? ((parseFloat(amount) + 0.0001) * 45000).toFixed(2) : '0.00'}
+                    {amount ? (parseFloat(amount) + 0.0001).toFixed(4) : '0.0000'} {selectedCrypto.symbol}                  
                   </Text>
                 </View>
               </View>
