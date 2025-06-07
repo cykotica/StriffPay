@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '@/constants/colors';
@@ -20,6 +21,8 @@ import { Mail, ArrowLeft } from 'lucide-react-native';
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
@@ -41,13 +44,14 @@ export default function ForgotPasswordScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={[{ flex: 1 }, isDark && { backgroundColor: colors.dark.surface1 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView 
         contentContainerStyle={[
           styles.container,
-          { paddingTop: insets.top + layout.spacing.xl, paddingBottom: insets.bottom + layout.spacing.xl }
+          { paddingTop: insets.top + layout.spacing.xl, paddingBottom: insets.bottom + layout.spacing.xl },
+          isDark && { backgroundColor: colors.dark.surface1 }
         ]}
       >
         <View style={styles.header}>
@@ -55,22 +59,32 @@ export default function ForgotPasswordScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <ArrowLeft size={24} color={colors.text} />
+            <ArrowLeft size={24} color={isDark ? colors.darkText : colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Reset Password</Text>
-          <Text style={styles.subtitle}>We'll send instructions to your email</Text>
+          <Text style={[styles.title, isDark && { color: colors.darkText }]}>
+            Reset Password
+          </Text>
+          <Text style={[styles.subtitle, isDark && { color: colors.darkTextSecondary }]}>
+            We'll send instructions to your email
+          </Text>
         </View>
 
         {!isSent ? (
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Mail size={20} color={colors.grey} style={styles.inputIcon} />
+            <View style={[
+              styles.inputContainer,
+              isDark && { 
+                backgroundColor: colors.dark.surface2,
+                borderColor: colors.dark.border
+              }
+            ]}>
+              <Mail size={20} color={isDark ? colors.darkTextSecondary : colors.grey} style={styles.inputIcon} />
               <TextInput
                 placeholder="Email"
                 value={email}
                 onChangeText={setEmail}
-                style={styles.input}
-                placeholderTextColor={colors.grey}
+                style={[styles.input, isDark && { color: colors.darkText }]}
+                placeholderTextColor={isDark ? colors.darkTextSecondary : colors.grey}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -81,28 +95,42 @@ export default function ForgotPasswordScreen() {
               onPress={handleSubmit}
               loading={isLoading}
               style={styles.button}
+              darkMode={isDark}
             />
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Remember your password? </Text>
+              <Text style={[styles.footerText, isDark && { color: colors.darkTextSecondary }]}>
+                Remember your password?{' '}
+              </Text>
               <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-                <Text style={styles.signInText}>Sign In</Text>
+                <Text style={[
+                  styles.signInText,
+                  isDark && { color: colors.dark.primaryAccent }
+                ]}>
+                  Sign In
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <View style={styles.successContainer}>
-            <View style={styles.successIconContainer}>
+            <View style={[
+              styles.successIconContainer,
+              isDark && { backgroundColor: colors.dark.primaryAccent }
+            ]}>
               <Mail size={40} color={colors.white} />
             </View>
-            <Text style={styles.successTitle}>Check your email</Text>
-            <Text style={styles.successText}>
+            <Text style={[styles.successTitle, isDark && { color: colors.darkText }]}>
+              Check your email
+            </Text>
+            <Text style={[styles.successText, isDark && { color: colors.darkTextSecondary }]}>
               We've sent password recovery instructions to your email address.
             </Text>
             <Button
               title="Back to Login"
               onPress={() => router.push('/(auth)/login')}
               style={styles.button}
+              darkMode={isDark}
             />
           </View>
         )}

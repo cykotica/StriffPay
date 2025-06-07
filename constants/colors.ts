@@ -41,17 +41,31 @@ export const colors = {
   cardBackground: '#FFFFFF',
   darkCardBackground: '#1E1E1E',
   
+  // Dark mode specific
+  dark: {
+    surface1: '#121212',    // Main background
+    surface2: '#1E1E1E',    // Card background
+    surface3: '#252525',    // Elevated components
+    border: '#2A2A2A',      // Subtle borders
+    primaryAccent: '#7CA2FF', // Primary accent in dark mode (enhanced contrast)
+    secondaryAccent: '#60B3FF', // Secondary accent for dark mode (enhanced contrast)
+    placeholder: '#404040',  // Loading placeholder
+    cardShadow: 'rgba(0, 0, 0, 0.3)',  // Darker shadow for better depth
+    surfaceHover: '#2C2C2C',  // Hover state for interactive elements
+    divider: '#363636',     // Stronger divider for better visual separation
+  },
+  
   // Text colors
   text: '#212121',
   textSecondary: '#757575',
   textLight: '#BDBDBD',
   darkText: '#FFFFFF',
-  darkTextSecondary: '#B0B0B0',
+  darkTextSecondary: '#94A3B8',  // Softer secondary text for dark mode
   
   // Crypto specific colors
   bitcoin: '#F7931A',
   ethereum: '#627EEA',
   tether: '#26A17B',
   litecoin: '#345D9D',
-  ripple: '#0085C0',
-};
+  ripple: '#0085C0'
+}

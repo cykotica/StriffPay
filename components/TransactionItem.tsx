@@ -8,61 +8,88 @@ import { Send, ArrowDownToLine } from 'lucide-react-native';
 interface TransactionItemProps {
   type: 'send' | 'receive';
   amount: string;
-  value: string;
+  value: number;
+  loading?: boolean;
   recipient?: string;
   sender?: string;
   date: string;
   onPress?: () => void;
+  darkMode?: boolean;
 }
 
 export default function TransactionItem({
   type,
   amount,
   value,
+  loading = false,
   recipient,
   sender,
   date,
   onPress,
+  darkMode = false,
 }: TransactionItemProps) {
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[
+        styles.container,
+        darkMode && {
+          backgroundColor: colors.dark.surface2,
+          borderBottomColor: colors.dark.border
+        }
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
       <View 
         style={[
           styles.iconContainer, 
-          { backgroundColor: type === 'send' ? colors.accent + '20' : colors.success + '20' }
+          { 
+            backgroundColor: type === 'send' 
+              ? (darkMode ? colors.accent + '15' : colors.accent + '20')
+              : (darkMode ? colors.success + '15' : colors.success + '20')
+          }
         ]}
       >
         {type === 'send' ? (
-          <Send size={20} color={colors.accent} />
+          <Send size={20} color={darkMode ? colors.accentLight : colors.accent} />
         ) : (
-          <ArrowDownToLine size={20} color={colors.success} />
+          <ArrowDownToLine size={20} color={darkMode ? colors.successLight : colors.success} />
         )}
       </View>
       
       <View style={styles.info}>
-        <Text style={styles.type}>
+        <Text style={[styles.type, darkMode && { color: colors.darkText }]}>
           {type === 'send' ? 'Sent to ' : 'Received from '}
-          <Text style={styles.name}>
+          <Text style={[styles.name, darkMode && { color: colors.darkText }]}>
             {type === 'send' ? recipient : sender}
           </Text>
         </Text>
-        <Text style={styles.date}>{date}</Text>
+        <Text style={[styles.date, darkMode && { color: colors.darkTextSecondary }]}>{date}</Text>
       </View>
-      
+
       <View style={styles.values}>
-        <Text 
-          style={[
-            styles.amount,
-            { color: type === 'send' ? colors.accent : colors.success }
-          ]}
-        >
+        <Text style={[
+          styles.amount,
+          {
+            color: type === 'send' 
+              ? (darkMode ? colors.errorLight : colors.error)
+              : (darkMode ? colors.successLight : colors.success)
+          }
+        ]}>
           {type === 'send' ? '-' : '+'}{amount}
         </Text>
-        <Text style={styles.value}>{value}</Text>
+        {loading ? (
+          <View style={{ 
+            height: 16, 
+            width: 60, 
+            backgroundColor: darkMode ? colors.dark.placeholder : '#eee',
+            borderRadius: 4 
+          }} />
+        ) : (
+          <Text style={[styles.value, darkMode && { color: colors.darkTextSecondary }]}>
+            ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -72,9 +99,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: layout.spacing.md,
+    padding: layout.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.extraLightGrey,
+    borderBottomColor: colors.lightGrey,
   },
   iconContainer: {
     width: 40,

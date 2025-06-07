@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,6 +9,7 @@ import {
   Animated,
   FlatList,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
@@ -16,15 +17,20 @@ import { layout } from '@/constants/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TrendingUp, TrendingDown, ChevronDown, Plus, Search, Filter, Clock } from 'lucide-react-native';
 import Button from '@/components/Button';
+import { useDarkMode } from './more';
+import { useRouter } from 'expo-router';
+import { fetchCoinGeckoPrices } from '../../utils/marketData';
+import TokenCard from '@/components/TokenCard';
+import TransactionItem from '@/components/TransactionItem';
 
-// Mock data for coins
+// Mock data for coins (remove hardcoded USD values)
 const coins = [
   {
     id: '1',
     name: 'Bitcoin',
     symbol: 'BTC',
     amount: '0.45 BTC',
-    value: '$20,250.00',
+    balance: 0.45,
     change: '+5.2%',
     trending: 'up',
     color: colors.bitcoin,
@@ -35,7 +41,7 @@ const coins = [
     name: 'Ethereum',
     symbol: 'ETH',
     amount: '3.25 ETH',
-    value: '$6,647.50',
+    balance: 3.25,
     change: '-1.8%',
     trending: 'down',
     color: colors.ethereum,
@@ -46,7 +52,7 @@ const coins = [
     name: 'Tether',
     symbol: 'USDT',
     amount: '350 USDT',
-    value: '$350.00',
+    balance: 350,
     change: '+0.1%',
     trending: 'up',
     color: colors.tether,
@@ -57,7 +63,7 @@ const coins = [
     name: 'Litecoin',
     symbol: 'LTC',
     amount: '2.5 LTC',
-    value: '$225.00',
+    balance: 2.5,
     change: '+2.3%',
     trending: 'up',
     color: colors.litecoin,
@@ -68,7 +74,7 @@ const coins = [
     name: 'Ripple',
     symbol: 'XRP',
     amount: '500 XRP',
-    value: '$325.00',
+    balance: 500,
     change: '-0.8%',
     trending: 'down',
     color: colors.ripple,
@@ -89,91 +95,198 @@ const isMediumScreen = SCREEN_WIDTH < 430;
 
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
+  const { darkMode } = useDarkMode();
+  const router = useRouter();
   const [selectedTab, setSelectedTab] = useState('assets');
-  const [balanceVisible, setBalanceVisible] = useState(true);
   const [sortOption, setSortOption] = useState('value');
+  const [loadingPrices, setLoadingPrices] = useState(true);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [priceError, setPriceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadPrices() {
+      setLoadingPrices(true);
+      setPriceError(null);
+      const symbols = coins.map(c => c.symbol);
+      try {
+        const result = await fetchCoinGeckoPrices(symbols);
+        setPrices(result);
+      } catch (e) {
+        setPriceError('Failed to load prices');
+      }
+      setLoadingPrices(false);
+    }
+    loadPrices();
+  }, []);
+
+  // Calculate total balance
+  const totalBalance = coins.reduce((sum, coin) => {
+    const price = prices[coin.symbol] ?? 0;
+    return sum + coin.balance * price;
+  }, 0);
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      darkMode && { backgroundColor: colors.dark.surface1 }
+    ]}>
+      {/* Header */}
       <View style={[
         styles.header,
-        { paddingTop: insets.top + layout.spacing.md }
+        { paddingTop: insets.top + layout.spacing.md },
+        darkMode && { 
+          backgroundColor: colors.dark.surface2,
+          borderBottomColor: colors.dark.border,
+          ...Platform.select({
+            ios: {
+              shadowColor: colors.dark.cardShadow,
+              shadowOpacity: 0.3,
+            },
+            android: {
+              elevation: 4,
+            },
+          }),
+        }
       ]}>
-        <Text style={styles.headerTitle}>Wallet</Text>
-        <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color={colors.primary} />
+        <Text style={[
+          styles.headerTitle,
+          darkMode && { color: colors.darkText }
+        ]}>Wallet</Text>
+        <TouchableOpacity style={[
+          styles.filterButton,
+          darkMode && { backgroundColor: colors.dark.surface3 }
+        ]}>
+          <Filter size={20} color={darkMode ? colors.darkText : colors.text} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Total Balance Card */}
-        <View style={styles.balanceCard}>
-          <TouchableOpacity 
-            onPress={() => setBalanceVisible(!balanceVisible)}
-            style={styles.balanceHeaderContainer}
-          >
-            <Text style={styles.balanceHeader}>Total Balance</Text>
-            <ChevronDown size={18} color={colors.white} />
-          </TouchableOpacity>
-          <Text style={styles.balanceValue}>
-            {balanceVisible ? '$27,797.50' : '******'}
-          </Text>
-          <View style={styles.balanceChangeContainer}>
-            <TrendingUp size={16} color={colors.success} />
-            <Text style={styles.balanceChange}>+2.4% ($654.30)</Text>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          darkMode && { backgroundColor: colors.dark.surface1 }
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Balance Card */}
+        <View style={[
+          styles.balanceCard,
+          darkMode && { 
+            backgroundColor: colors.dark.surface2,
+            borderColor: colors.dark.border,
+            ...Platform.select({
+              ios: {
+                shadowColor: colors.dark.cardShadow,
+                shadowOpacity: 0.3,
+              },
+              android: {
+                elevation: 4,
+              },
+            }),
+          }
+        ]}>
+          <View style={styles.balanceHeaderContainer}>
+            <Text style={[
+              styles.balanceHeader,
+              darkMode && { color: colors.darkText }
+            ]}>Total Balance</Text>
           </View>
+          <Text style={[
+            styles.balanceValue,
+            darkMode && { color: colors.darkText }
+          ]}>$2,458.00</Text>
           <View style={styles.balanceActions}>
-            <Button
-              title="Deposit"
-              variant="outline"
-              onPress={() => {}}
-              style={{ ...styles.balanceButton, borderColor: colors.white }}
-              textStyle={{ color: colors.white }}
+            <Button 
+              title="Send" 
+              variant="primary" 
+              size="small"
+              style={styles.balanceButton}
+              darkMode={darkMode}
+              onPress={() => router.push('/(tabs)/send')}
             />
-            <Button
-              title="Withdraw"
-              variant="outline"
-              onPress={() => {}}
-              style={{ ...styles.balanceButton, borderColor: colors.white }}
-              textStyle={{ color: colors.white }}
+            <Button 
+              title="Receive" 
+              variant="primary" 
+              size="small"
+              style={styles.balanceButton}
+              darkMode={darkMode}
+              onPress={() => router.push('/(tabs)/receive')}
+            />
+            <Button 
+              title="Convert" 
+              variant="primary" 
+              size="small"
+              style={styles.balanceButton}
+              darkMode={darkMode}
+              onPress={() => router.push('/(deposit)/convert')}
             />
           </View>
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              style={[
-                styles.tab,
-                selectedTab === tab.id && styles.activeTab,
-              ]}
-              onPress={() => setSelectedTab(tab.id)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  selectedTab === tab.id && styles.activeTabText,
-                ]}
-              >
-                {tab.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={[
+          styles.tabsContainer,
+          darkMode && { 
+            backgroundColor: colors.dark.surface2,
+            borderColor: colors.dark.border,
+          }
+        ]}>
+          <TouchableOpacity 
+            style={[
+              styles.tab,
+              selectedTab === 'assets' && styles.activeTab,
+              darkMode && selectedTab === 'assets' && { backgroundColor: colors.dark.primaryAccent }
+            ]}
+            onPress={() => setSelectedTab('assets')}
+          >
+            <Text style={[
+              styles.tabText,
+              selectedTab === 'assets' && styles.activeTabText,
+              darkMode && { color: selectedTab === 'assets' ? colors.white : colors.darkTextSecondary }
+            ]}>Assets</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[
+              styles.tab,
+              selectedTab === 'transactions' && styles.activeTab,
+              darkMode && selectedTab === 'transactions' && { backgroundColor: colors.dark.primaryAccent }
+            ]}
+            onPress={() => setSelectedTab('transactions')}
+          >
+            <Text style={[
+              styles.tabText,
+              selectedTab === 'transactions' && styles.activeTabText,
+              darkMode && { color: selectedTab === 'transactions' ? colors.white : colors.darkTextSecondary }
+            ]}>Transactions</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Search and Sort */}
         <View style={styles.searchSortContainer}>
-          <View style={styles.searchContainer}>
-            <Search size={18} color={colors.grey} style={styles.searchIcon} />
-            <Text style={styles.searchPlaceholder}>Search coins</Text>
+          <View style={[
+            styles.searchContainer,
+            darkMode && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border,
+            }
+          ]}>
+            <Search size={18} color={darkMode ? colors.darkTextSecondary : colors.grey} style={styles.searchIcon} />
+            <Text style={[
+              styles.searchPlaceholder,
+              darkMode && { color: colors.darkTextSecondary }
+            ]}>Search coins</Text>
           </View>
-          <TouchableOpacity style={styles.sortContainer}>
-            <Text style={styles.sortText}>
-              Sort by: {sortOption === 'value' ? 'Value' : sortOption === 'name' ? 'Name' : 'Change'}
-            </Text>
-            <ChevronDown size={16} color={colors.primary} />
+          <TouchableOpacity style={[
+            styles.sortContainer,
+            darkMode && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border 
+            }
+          ]}>
+            <Text style={[
+              styles.sortText,
+              darkMode && { color: colors.dark.primaryAccent }
+            ]}>Sort by: {sortOption}</Text>
+            <ChevronDown size={16} color={darkMode ? colors.dark.primaryAccent : colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -181,54 +294,32 @@ export default function WalletScreen() {
         {selectedTab === 'assets' && (
           <View style={styles.coinsContainer}>
             {coins.map((coin) => (
-              <TouchableOpacity key={coin.id} style={styles.coinCard}>
-                <View style={styles.coinHeader}>
-                  <View style={styles.coinInfo}>
-                    <View style={styles.coinImageContainer}>
-                      <Text style={[styles.coinSymbolPlaceholder, { color: coin.color }]}>
-                        {coin.symbol}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={styles.coinName}>{coin.name}</Text>
-                      <Text style={styles.coinSymbol}>{coin.symbol}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.coinChangeContainer}>
-                    <View style={styles.coinTrendingContainer}>
-                      {coin.trending === 'up' ? (
-                        <TrendingUp size={14} color={colors.success} />
-                      ) : (
-                        <TrendingDown size={14} color={colors.error} />
-                      )}
-                      <Text
-                        style={[
-                          styles.coinChange,
-                          {
-                            color: coin.trending === 'up' ? colors.success : colors.error,
-                          },
-                        ]}
-                      >
-                        {coin.change}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.coinDetails}>
-                  <View>
-                    <Text style={styles.coinLabel}>Amount</Text>
-                    <Text style={styles.coinAmount}>{coin.amount}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.coinLabel}>Value</Text>
-                    <Text style={styles.coinValue}>{coin.value}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
+              <TokenCard
+                key={coin.id}
+                name={coin.name}
+                symbol={coin.symbol}
+                amount={coin.amount}
+                value={coin.balance * (prices[coin.symbol] ?? 0)}
+                loading={loadingPrices}
+                change={coin.change}
+                trending={coin.trending === 'up' ? 'up' : 'down'}
+                color={coin.color}
+                darkMode={darkMode}
+                onPress={() => {}}
+              />
             ))}
-            <TouchableOpacity style={styles.addCoinButton}>
-              <Plus size={20} color={colors.primary} />
-              <Text style={styles.addCoinText}>Add New Coin</Text>
+            <TouchableOpacity style={[
+              styles.addCoinButton,
+              darkMode && { 
+                backgroundColor: colors.dark.surface2,
+                borderColor: colors.dark.border 
+              }
+            ]} onPress={() => router.push('/(deposit)/deposit')}>
+              <Plus size={20} color={darkMode ? colors.dark.primaryAccent : colors.primary} />
+              <Text style={[
+                styles.addCoinText,
+                darkMode && { color: colors.dark.primaryAccent }
+              ]}>Add New Coin</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -243,6 +334,15 @@ export default function WalletScreen() {
                 <ChevronDown size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
+            {/* Example: Replace with real transaction data and live price */}
+            {/* <TransactionItem
+              type="send"
+              amount="0.1 BTC"
+              value={0.1 * (prices['BTC'] ?? 0)}
+              loading={loadingPrices}
+              recipient="John Doe"
+              date="2025-06-01"
+            /> */}
             <View style={styles.emptyTransactions}>
               <Text style={styles.emptyTransactionsText}>No transactions yet</Text>
               <Text style={styles.emptyTransactionsSubtext}>
@@ -290,6 +390,7 @@ export default function WalletScreen() {
             </View>
           </View>
         )}
+        {priceError && <Text style={{ color: 'red', textAlign: 'center' }}>{priceError}</Text>}
       </ScrollView>
     </View>
   );

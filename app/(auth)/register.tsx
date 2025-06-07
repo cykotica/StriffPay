@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '@/constants/colors';
@@ -19,6 +20,8 @@ import { Lock, Mail, Eye, EyeOff, User, ArrowLeft } from 'lucide-react-native';
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,101 +42,126 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={[{ flex: 1 }, isDark && { backgroundColor: colors.dark.surface1 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView 
         contentContainerStyle={[
           styles.container,
-          { paddingTop: insets.top + layout.spacing.xl, paddingBottom: insets.bottom + layout.spacing.xl }
+          { paddingTop: insets.top + layout.spacing.xl, paddingBottom: insets.bottom + layout.spacing.xl },
+          isDark && { backgroundColor: colors.dark.surface1 }
         ]}
       >
         <View style={styles.header}>
           <TouchableOpacity 
+            style={styles.backButton} 
             onPress={() => router.back()}
-            style={styles.backButton}
           >
-            <ArrowLeft size={24} color={colors.text} />
+            <ArrowLeft size={24} color={isDark ? colors.darkText : colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign up to get started</Text>
+          <Text style={[styles.title, isDark && { color: colors.darkText }]}>
+            Create Account
+          </Text>
+          <Text style={[styles.subtitle, isDark && { color: colors.darkTextSecondary }]}>
+            Sign up to get started with StriffPay
+          </Text>
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <User size={20} color={colors.grey} style={styles.inputIcon} />
+          {/* Name Input */}
+          <View style={[
+            styles.inputContainer,
+            isDark && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border
+            }
+          ]}>
+            <User size={20} color={isDark ? colors.darkTextSecondary : colors.grey} style={styles.inputIcon} />
             <TextInput
+              style={[styles.input, isDark && { color: colors.darkText }]}
               placeholder="Full Name"
+              placeholderTextColor={isDark ? colors.darkTextSecondary : colors.grey}
               value={name}
               onChangeText={setName}
-              style={styles.input}
-              placeholderTextColor={colors.grey}
-              autoCapitalize="words"
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Mail size={20} color={colors.grey} style={styles.inputIcon} />
+          {/* Email Input */}
+          <View style={[
+            styles.inputContainer,
+            isDark && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border
+            }
+          ]}>
+            <Mail size={20} color={isDark ? colors.darkTextSecondary : colors.grey} style={styles.inputIcon} />
             <TextInput
+              style={[styles.input, isDark && { color: colors.darkText }]}
               placeholder="Email"
+              placeholderTextColor={isDark ? colors.darkTextSecondary : colors.grey}
               value={email}
               onChangeText={setEmail}
-              style={styles.input}
-              placeholderTextColor={colors.grey}
-              keyboardType="email-address"
               autoCapitalize="none"
+              keyboardType="email-address"
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Lock size={20} color={colors.grey} style={styles.inputIcon} />
+          {/* Password Input */}
+          <View style={[
+            styles.inputContainer,
+            isDark && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border
+            }
+          ]}>
+            <Lock size={20} color={isDark ? colors.darkTextSecondary : colors.grey} style={styles.inputIcon} />
             <TextInput
+              style={[styles.input, isDark && { color: colors.darkText }]}
               placeholder="Password"
+              placeholderTextColor={isDark ? colors.darkTextSecondary : colors.grey}
+              secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
-              style={styles.input}
-              placeholderTextColor={colors.grey}
-              secureTextEntry={!showPassword}
             />
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
+            <TouchableOpacity
               style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? 
-                <EyeOff size={20} color={colors.grey} /> : 
-                <Eye size={20} color={colors.grey} />
-              }
+              {showPassword ? (
+                <EyeOff size={20} color={isDark ? colors.darkTextSecondary : colors.grey} />
+              ) : (
+                <Eye size={20} color={isDark ? colors.darkTextSecondary : colors.grey} />
+              )}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Lock size={20} color={colors.grey} style={styles.inputIcon} />
+          {/* Confirm Password Input */}
+          <View style={[
+            styles.inputContainer,
+            isDark && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border
+            }
+          ]}>
+            <Lock size={20} color={isDark ? colors.darkTextSecondary : colors.grey} style={styles.inputIcon} />
             <TextInput
+              style={[styles.input, isDark && { color: colors.darkText }]}
               placeholder="Confirm Password"
+              placeholderTextColor={isDark ? colors.darkTextSecondary : colors.grey}
+              secureTextEntry={!showConfirmPassword}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              style={styles.input}
-              placeholderTextColor={colors.grey}
-              secureTextEntry={!showConfirmPassword}
             />
-            <TouchableOpacity 
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            <TouchableOpacity
               style={styles.eyeIcon}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             >
-              {showConfirmPassword ? 
-                <EyeOff size={20} color={colors.grey} /> : 
-                <Eye size={20} color={colors.grey} />
-              }
+              {showConfirmPassword ? (
+                <EyeOff size={20} color={isDark ? colors.darkTextSecondary : colors.grey} />
+              ) : (
+                <Eye size={20} color={isDark ? colors.darkTextSecondary : colors.grey} />
+              )}
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.termsContainer}>
-            <Text style={styles.termsText}>
-              By signing up, you agree to our{' '}
-              <Text style={styles.termsLink}>Terms of Service</Text>
-              {' '}and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
-            </Text>
           </View>
 
           <Button
@@ -141,14 +169,21 @@ export default function RegisterScreen() {
             onPress={handleRegister}
             loading={isLoading}
             style={styles.button}
+            variant="primary"
+            darkMode={isDark}
           />
+        </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text style={styles.signInText}>Sign In</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, isDark && { color: colors.darkTextSecondary }]}>
+            Already have an account?
+          </Text>
+          <TouchableOpacity onPress={() => router.push('/login')}>
+            <Text style={[
+              styles.signInText,
+              isDark && { color: colors.dark.primaryAccent }
+            ]}> Sign In</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

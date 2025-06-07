@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,13 +9,22 @@ import {
   Share,
   Alert,
   Animated,
+  Platform,
+  Pressable,
+  ActivityIndicator,
+  BackHandler
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
 import { layout } from '@/constants/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import QRCode from 'react-native-qrcode-svg';
 import { ChevronDown, Copy, Share2, ChevronRight, QrCode } from 'lucide-react-native';
 import Button from '@/components/Button';
+import { useDarkMode } from './more';
+import { fetchCoinGeckoPrices } from '../../utils/marketData';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 
 // Mock addresses
 const addresses = [
@@ -44,25 +53,61 @@ const addresses = [
 
 export default function ReceiveScreen() {
   const insets = useSafeAreaInsets();
-  const [selectedCrypto, setSelectedCrypto] = useState(addresses[0]);
+  const { darkMode } = useDarkMode();
+  const [selectedCrypto, setSelectedCrypto] = useState<string>(addresses[0].id);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [qrValue, setQrValue] = useState('');
   const [showCurrencyOptions, setShowCurrencyOptions] = useState(false);
-  
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
   const optionsHeight = useRef(new Animated.Value(0)).current;
   const optionsOpacity = useRef(new Animated.Value(0)).current;
 
+  const selectedCryptoInfo = addresses.find(c => c.id === selectedCrypto);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (showCurrencyOptions) {
+        toggleCurrencyOptions();
+        return true;
+      }
+      return false;
+    });
+
+    return () => {
+      backHandler.remove();
+      // Cleanup animations
+      optionsHeight.setValue(0);
+      optionsOpacity.setValue(0);
+    };
+  }, [showCurrencyOptions]);
+
+  const generateQR = () => {
+    if (selectedCryptoInfo) {
+      const qrData = {
+        address: selectedCryptoInfo.address,
+        amount: amount,
+        note: note,
+      };
+      setQrValue(JSON.stringify(qrData));
+    }
+  };
+
   const toggleCurrencyOptions = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
     if (showCurrencyOptions) {
       Animated.parallel([
         Animated.timing(optionsHeight, {
           toValue: 0,
-          duration: 300,
+          duration: 200,
           useNativeDriver: false,
         }),
         Animated.timing(optionsOpacity, {
           toValue: 0,
-          duration: 300,
+          duration: 150,
           useNativeDriver: false,
         }),
       ]).start(() => setShowCurrencyOptions(false));
@@ -71,195 +116,423 @@ export default function ReceiveScreen() {
       Animated.parallel([
         Animated.timing(optionsHeight, {
           toValue: 180,
-          duration: 300,
+          duration: 250,
           useNativeDriver: false,
         }),
         Animated.timing(optionsOpacity, {
           toValue: 1,
-          duration: 300,
+          duration: 200,
           useNativeDriver: false,
         }),
       ]).start();
     }
   };
 
-  const handleSelectCrypto = (crypto: typeof addresses[number]) => {
-    setSelectedCrypto(crypto);
+  const handleSelectCrypto = async (crypto: typeof addresses[number]) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedCrypto(crypto.id);
     toggleCurrencyOptions();
   };
 
-  const handleCopyAddress = () => {
-    Alert.alert(
-      'Address Copied',
-      'The address has been copied to your clipboard.',
-      [{ text: 'OK' }]
-    );
-  };
-
-  const handleShare = async () => {
+  const handleCopyAddress = async () => {
     try {
-      await Share.share({
-        message: `My ${selectedCrypto.name} address: ${selectedCrypto.address}`,
-      });
+      await Clipboard.setStringAsync(selectedCryptoInfo?.address || '');
+      Alert.alert(
+        'Address Copied',
+        'The address has been copied to your clipboard.',
+        [{ text: 'OK' }]
+      );
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong.');
+      Alert.alert('Error', 'Failed to copy address to clipboard.');
     }
   };
 
+  const handleShare = async () => {
+    if (!selectedCryptoInfo) return;
+    
+    try {
+      const result = await Share.share({
+        message: `My ${selectedCryptoInfo.name} address: ${selectedCryptoInfo.address}`,
+        title: `${selectedCryptoInfo.name} Address`,
+      });
+      
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          console.log(`Shared via ${result.activityType}`);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to share address.');
+    }
+  };
+
+  useEffect(() => {
+    async function loadPrices() {
+      setLoadingPrices(true);
+      setPriceError(null);
+      const symbols = addresses.map(a => a.symbol);
+      try {
+        const result = await fetchCoinGeckoPrices(symbols);
+        setPrices(result);
+      } catch (e) {
+        setPriceError('Failed to load prices');
+      }
+      setLoadingPrices(false);
+    }
+    loadPrices();
+  }, []);
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      darkMode && { backgroundColor: colors.dark.surface1 }
+    ]}> 
       <View style={[
         styles.header,
-        { paddingTop: insets.top + layout.spacing.md }
+        { paddingTop: insets.top + layout.spacing.md },
+        darkMode && { 
+          backgroundColor: colors.dark.surface2,
+          borderColor: colors.dark.border 
+        }
       ]}>
-        <Text style={styles.headerTitle}>Receive Crypto</Text>
+        <Text style={[
+          styles.headerTitle,
+          darkMode && { color: colors.darkText }
+        ]}>Receive</Text>
       </View>
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+        style={darkMode && { backgroundColor: colors.dark.surface1 }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          darkMode && { backgroundColor: colors.dark.surface1 }
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* QR Code */}
-        <View style={styles.qrContainer}>
+        {/* QR Code Section */}
+        <View style={[
+          styles.qrContainer,
+          darkMode && { 
+            backgroundColor: colors.dark.surface2,
+            borderColor: colors.dark.border,
+            shadowColor: 'rgba(0, 0, 0, 0.3)',
+            elevation: 4
+          }
+        ]}>
           <View style={styles.qrHeader}>
-            <TouchableOpacity 
-              style={styles.cryptoSelector}
-              onPress={toggleCurrencyOptions}
-            >
-              <View style={[styles.cryptoIcon, { backgroundColor: selectedCrypto.color + '20' }]}>
-                <Text style={[styles.cryptoIconText, { color: selectedCrypto.color }]}>
-                  {selectedCrypto.symbol.charAt(0)}
-                </Text>
-              </View>
-              <Text style={styles.cryptoName}>{selectedCrypto.name}</Text>
-              <ChevronDown size={20} color={colors.grey} />
-            </TouchableOpacity>
+            {selectedCryptoInfo && (
+              <TouchableOpacity 
+                style={styles.cryptoSelector}
+                onPress={toggleCurrencyOptions}
+                accessibilityLabel={`Select cryptocurrency, currently ${selectedCryptoInfo.name}`}
+                accessibilityHint="Opens a list of available cryptocurrencies"
+              >
+                <View style={[
+                  styles.cryptoIcon,
+                  { backgroundColor: selectedCryptoInfo.color + '20' }
+                ]}>
+                  <Text style={[
+                    styles.cryptoIconText,
+                    { color: selectedCryptoInfo.color }
+                  ]}>{selectedCryptoInfo.symbol.charAt(0)}</Text>
+                </View>
+                <Text style={[
+                  styles.cryptoName,
+                  darkMode && { color: colors.darkText }
+                ]}>{selectedCryptoInfo.name}</Text>
+                <ChevronDown 
+                  size={20} 
+                  color={darkMode ? colors.darkTextSecondary : colors.grey} 
+                />
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Currency Options Dropdown */}
-          {showCurrencyOptions && (
+          <View style={[
+            styles.qrWrapper,
+            darkMode && {
+              backgroundColor: colors.dark.surface3,
+              borderColor: colors.dark.border,
+              shadowColor: 'rgba(0, 0, 0, 0.3)',
+            }
+          ]}>
+            <QRCode 
+              value={qrValue || selectedCryptoInfo?.address || ''}
+              size={200}
+              backgroundColor={darkMode ? colors.dark.surface3 : colors.white}
+              color={darkMode ? colors.darkText : colors.text}
+            />
+          </View>
+          <Text style={[
+            styles.scanText,
+            darkMode && { color: colors.darkTextSecondary }
+          ]}>Scan QR code to receive payment</Text>
+        </View>
+
+        {/* Currency Options Modal */}
+        {showCurrencyOptions && (
+          <Pressable 
+            style={[
+              styles.modalOverlay,
+              darkMode && { backgroundColor: 'rgba(0, 0, 0, 0.7)' }
+            ]}
+            onPress={toggleCurrencyOptions}
+          >
             <Animated.View 
               style={[
                 styles.currencyOptions,
-                { 
+                {
                   height: optionsHeight,
                   opacity: optionsOpacity,
+                },
+                darkMode && {
+                  backgroundColor: colors.dark.surface2,
+                  borderColor: colors.dark.border,
+                  shadowColor: 'rgba(0, 0, 0, 0.3)',
                 }
               ]}
             >
-              {addresses.map(crypto => (
-                <TouchableOpacity
-                  key={crypto.id}
-                  style={[
-                    styles.currencyOption,
-                    selectedCrypto.id === crypto.id && styles.selectedCurrencyOption
-                  ]}
-                  onPress={() => handleSelectCrypto(crypto)}
-                >
-                  <View style={[styles.currencyOptionIcon, { backgroundColor: crypto.color + '20' }]}>
-                    <Text style={[styles.currencyOptionIconText, { color: crypto.color }]}>
-                      {crypto.symbol.charAt(0)}
-                    </Text>
-                  </View>
-                  <View style={styles.currencyOptionInfo}>
-                    <Text style={styles.currencyOptionName}>{crypto.name}</Text>
-                    <Text style={styles.currencyOptionSymbol}>{crypto.symbol}</Text>
-                  </View>
-                  {selectedCrypto.id === crypto.id && (
-                    <View style={styles.selectedIndicator} />
-                  )}
-                </TouchableOpacity>
-              ))}
+              <Pressable style={{ flex: 1 }} onPress={e => e.stopPropagation()}>
+                {addresses.map((crypto) => (
+                  <TouchableOpacity
+                    key={crypto.id}
+                    style={[
+                      styles.currencyOption,
+                      crypto.id === selectedCrypto && styles.selectedCurrencyOption,
+                      darkMode && {
+                        borderBottomColor: colors.dark.border,
+                        backgroundColor: crypto.id === selectedCrypto ? 
+                          colors.dark.surface3 : colors.dark.surface2
+                      }
+                    ]}
+                    onPress={() => handleSelectCrypto(crypto)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`Select ${crypto.name}`}
+                    accessibilityState={{ selected: crypto.id === selectedCrypto }}
+                  >
+                    <View style={[
+                      styles.currencyOptionIcon,
+                      { backgroundColor: crypto.color + '20' }
+                    ]}>
+                      <Text style={{ color: crypto.color }}>{crypto.symbol.charAt(0)}</Text>
+                    </View>
+                    <View style={styles.currencyOptionInfo}>
+                      <Text style={[
+                        styles.currencyOptionName,
+                        darkMode && { color: colors.darkText }
+                      ]}>{crypto.name}</Text>
+                      <Text style={[
+                        styles.currencyOptionSymbol,
+                        darkMode && { color: colors.darkTextSecondary }
+                      ]}>{crypto.symbol}</Text>
+                    </View>
+                    {crypto.id === selectedCrypto && (
+                      <View style={[
+                        styles.selectedIndicator,
+                        darkMode && { backgroundColor: colors.dark.primaryAccent }
+                      ]} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </Pressable>
             </Animated.View>
-          )}
+          </Pressable>
+        )}
 
-          <View style={styles.qrCode}>
-            <QrCode size={200} color={colors.primary} />
-          </View>
-
-          <Text style={styles.scanText}>
-            Scan this QR code to receive {selectedCrypto.name}
-          </Text>
-        </View>
-
-        {/* Address */}
+        {/* Address Section with accessibility */}
         <View style={styles.addressContainer}>
-          <Text style={styles.addressLabel}>Your {selectedCrypto.name} Address</Text>
-          <View style={styles.addressCard}>
-            <Text style={styles.address}>{selectedCrypto.address}</Text>
-            <View style={styles.addressActions}>
+          <Text style={[
+            styles.addressLabel,
+            darkMode && { color: colors.darkText }
+          ]}>Wallet Address</Text>
+          <View style={[
+            styles.addressCard,
+            darkMode && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border,
+              shadowColor: 'rgba(0, 0, 0, 0.3)',
+              elevation: 4
+            }
+          ]}>
+            <Text 
+              style={[
+                styles.address,
+                darkMode && { color: colors.darkText }
+              ]}
+              selectable={true}
+              accessibilityLabel={`${selectedCryptoInfo?.name} wallet address`}
+            >
+              {selectedCryptoInfo?.address}
+            </Text>
+            <View style={[
+              styles.addressActions,
+              darkMode && { borderTopColor: colors.dark.border }
+            ]}>
               <TouchableOpacity 
                 style={styles.addressAction}
                 onPress={handleCopyAddress}
+                accessibilityLabel={`Copy ${selectedCryptoInfo?.name} address`}
+                accessibilityHint="Copies the wallet address to clipboard"
               >
-                <Copy size={20} color={colors.primary} />
-                <Text style={styles.addressActionText}>Copy</Text>
+                <Copy 
+                  size={20} 
+                  color={darkMode ? colors.dark.primaryAccent : colors.primary} 
+                />
+                <Text style={[
+                  styles.addressActionText,
+                  darkMode && { color: colors.dark.primaryAccent }
+                ]}>Copy</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.addressAction}
                 onPress={handleShare}
+                accessibilityLabel={`Share ${selectedCryptoInfo?.name} address`}
+                accessibilityHint="Opens sharing options for the wallet address"
               >
-                <Share2 size={20} color={colors.primary} />
-                <Text style={styles.addressActionText}>Share</Text>
+                <Share2 
+                  size={20} 
+                  color={darkMode ? colors.dark.primaryAccent : colors.primary} 
+                />
+                <Text style={[
+                  styles.addressActionText,
+                  darkMode && { color: colors.dark.primaryAccent }
+                ]}>Share</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Request Specific Amount */}
+        {/* Request Amount Section */}
         <View style={styles.requestContainer}>
-          <Text style={styles.requestLabel}>Request Specific Amount (Optional)</Text>
-          <View style={styles.amountContainer}>
+          <Text style={[
+            styles.requestLabel,
+            darkMode && { color: colors.darkText }
+          ]}>Request Amount</Text>
+          <View style={[
+            styles.amountContainer,
+            darkMode && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border,
+              shadowColor: 'rgba(0, 0, 0, 0.3)',
+              elevation: 4
+            }
+          ]}>
             <TextInput
+              style={[
+                styles.amountInput,
+                darkMode && { color: colors.darkText }
+              ]}
               placeholder="0.00"
+              placeholderTextColor={darkMode ? colors.darkTextSecondary : colors.textSecondary}
+              keyboardType="decimal-pad"
               value={amount}
               onChangeText={setAmount}
-              style={styles.amountInput}
-              placeholderTextColor={colors.grey}
-              keyboardType="decimal-pad"
+              accessibilityLabel={`Enter amount in ${selectedCryptoInfo?.symbol}`}
+              accessibilityHint="Enter the amount you want to request"
             />
-            <Text style={styles.amountSymbol}>{selectedCrypto.symbol}</Text>
+            <Text style={[
+              styles.amountSymbol,
+              darkMode && { color: colors.darkTextSecondary }
+            ]}>{selectedCryptoInfo?.symbol}</Text>
           </View>
-          <Text style={styles.amountValue}>
-            ≈ ${amount ? (parseFloat(amount) * 45000).toFixed(2) : '0.00'}
-          </Text>
 
-          <Text style={styles.noteLabel}>Add Note (Optional)</Text>
+          <View style={styles.priceContainer}>
+            {loadingPrices ? (
+              <ActivityIndicator 
+                size="small" 
+                color={darkMode ? colors.dark.primaryAccent : colors.primary} 
+              />
+            ) : priceError ? (
+              <Text style={[
+                styles.errorText,
+                darkMode && { color: colors.errorLight }
+              ]}>{priceError}</Text>
+            ) : (
+              <Text style={[
+                styles.amountValue,
+                darkMode && { color: colors.darkTextSecondary }
+              ]}>
+                ≈ ${amount && prices[selectedCryptoInfo?.symbol || ''] 
+                  ? (parseFloat(amount) * prices[selectedCryptoInfo?.symbol || '']).toFixed(2) 
+                  : '0.00'} USD
+              </Text>
+            )}
+          </View>
+
+          <Text style={[
+            styles.noteLabel,
+            darkMode && { color: colors.darkText }
+          ]}>Add Note (Optional)</Text>
           <TextInput
-            placeholder="What's this payment for?"
+            style={[
+              styles.noteInput,
+              darkMode && { 
+                backgroundColor: colors.dark.surface2,
+                borderColor: colors.dark.border,
+                color: colors.darkText 
+              }
+            ]}
+            placeholder="Enter note..."
+            placeholderTextColor={darkMode ? colors.darkTextSecondary : colors.textSecondary}
+            multiline
             value={note}
             onChangeText={setNote}
-            style={styles.noteInput}
-            placeholderTextColor={colors.grey}
-            multiline
           />
 
           <Button
-            title="Generate Request QR"
-            onPress={() => Alert.alert('QR Generated', 'Your payment request QR code has been updated.')}
+            title="Generate Payment QR"
+            onPress={generateQR}
             style={styles.generateButton}
+            variant="primary"
+            darkMode={darkMode}
           />
         </View>
 
-        {/* Network Options */}
+        {/* Network Section */}
         <View style={styles.networkContainer}>
-          <TouchableOpacity style={styles.networkSelector}>
+          <View style={[
+            styles.networkSelector,
+            darkMode && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border 
+            }
+          ]}>
             <View>
-              <Text style={styles.networkLabel}>Network</Text>
-              <Text style={styles.networkName}>
-                {selectedCrypto.id === '1' ? 'Bitcoin Mainnet' : 
-                 selectedCrypto.id === '2' ? 'Ethereum Mainnet' : 'Tron Network'}
+              <Text style={[
+                styles.networkLabel,
+                darkMode && { color: colors.darkTextSecondary }
+              ]}>Network</Text>
+              <Text style={[
+                styles.networkName,
+                darkMode && { color: colors.darkText }
+              ]}>
+                {selectedCryptoInfo?.name} Network
               </Text>
             </View>
-            <ChevronRight size={20} color={colors.grey} />
-          </TouchableOpacity>
+            <ChevronRight 
+              size={20} 
+              color={darkMode ? colors.darkTextSecondary : colors.grey} 
+            />
+          </View>
         </View>
 
         {/* Security Notice */}
-        <View style={styles.securityNotice}>
-          <Text style={styles.securityNoticeText}>
-            This address can only receive {selectedCrypto.name}. 
-            Sending any other asset to this address may result in permanent loss of funds.
+        <View style={[
+          styles.securityNotice,
+          darkMode && { 
+            backgroundColor: colors.warning + '10',
+            borderWidth: 1,
+            borderColor: colors.warning + '30'
+          }
+        ]}>
+          <Text style={[
+            styles.securityNoticeText,
+            darkMode && { 
+              color: colors.warning,
+              opacity: 0.9
+            }
+          ]}>
+            ⚠️ Only send {selectedCryptoInfo?.symbol} to this address. Sending any other assets may result in permanent loss.
           </Text>
         </View>
       </ScrollView>
@@ -279,7 +552,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.spacing.xl,
     paddingBottom: layout.spacing.md,
     backgroundColor: colors.white,
-    ...layout.shadow.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGrey,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   headerTitle: {
     fontFamily: fonts.semiBold,
@@ -296,7 +581,19 @@ const styles = StyleSheet.create({
     borderRadius: layout.radius.lg,
     padding: layout.spacing.lg,
     alignItems: 'center',
-    ...layout.shadow.sm,
+    borderWidth: 1,
+    borderColor: colors.extraLightGrey,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   qrHeader: {
     width: '100%',
@@ -326,22 +623,45 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginRight: layout.spacing.sm,
   },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
   currencyOptions: {
-    width: '100%',
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 120 : 100,
+    left: layout.spacing.xl,
+    right: layout.spacing.xl,
     backgroundColor: colors.white,
-    borderRadius: layout.radius.md,
+    borderRadius: layout.radius.lg,
     borderWidth: 1,
     borderColor: colors.lightGrey,
-    marginBottom: layout.spacing.md,
     overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   currencyOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: layout.spacing.md,
-    paddingHorizontal: layout.spacing.md,
+    padding: layout.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.extraLightGrey,
+    borderBottomColor: colors.lightGrey,
   },
   selectedCurrencyOption: {
     backgroundColor: colors.extraLightGrey,
@@ -353,10 +673,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: layout.spacing.md,
-  },
-  currencyOptionIconText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.md,
   },
   currencyOptionInfo: {
     flex: 1,
@@ -385,6 +701,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.extraLightGrey,
     ...layout.shadow.sm,
+  },
+  qrWrapper: {
+    padding: layout.spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: layout.radius.md,
+    marginVertical: layout.spacing.xl,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   scanText: {
     fontFamily: fonts.medium,
@@ -445,7 +778,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: layout.radius.md,
     padding: layout.spacing.md,
-    ...layout.shadow.sm,
+    borderWidth: 1,
+    borderColor: colors.extraLightGrey,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   amountInput: {
     flex: 1,
@@ -481,7 +826,19 @@ const styles = StyleSheet.create({
     fontSize: fonts.md,
     color: colors.text,
     marginBottom: layout.spacing.lg,
-    ...layout.shadow.sm,
+    borderWidth: 1,
+    borderColor: colors.extraLightGrey,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   generateButton: {
     marginBottom: layout.spacing.xl,
@@ -496,7 +853,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: layout.radius.md,
     padding: layout.spacing.lg,
-    ...layout.shadow.sm,
+    borderWidth: 1,
+    borderColor: colors.extraLightGrey,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   networkLabel: {
     fontFamily: fonts.regular,
@@ -514,11 +883,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warning + '20',
     borderRadius: layout.radius.md,
     marginBottom: layout.spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.warning + '30',
   },
   securityNoticeText: {
     fontFamily: fonts.regular,
     fontSize: fonts.sm,
     color: colors.warning,
     lineHeight: 18,
+  },
+  errorText: {
+    fontFamily: fonts.medium,
+    fontSize: fonts.sm,
+    color: colors.error,
+    textAlign: 'center',
+  },
+  priceContainer: {
+    height: 24,
+    justifyContent: 'center',
+    marginTop: layout.spacing.xs,
+    marginBottom: layout.spacing.lg,
   },
 });

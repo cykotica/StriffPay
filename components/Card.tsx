@@ -11,7 +11,8 @@ interface CardProps {
   expiryDate: string;
   type: 'visa' | 'mastercard' | 'amex';
   variant?: 'primary' | 'secondary' | 'dark';
-  balance?: string;
+  balance?: number; // now expects a number (USD value)
+  loading?: boolean; // show loading state for balance
   onPress?: () => void;
 }
 
@@ -22,6 +23,7 @@ export default function Card({
   type,
   variant = 'primary',
   balance,
+  loading = false,
   onPress,
 }: CardProps) {
   // Function to format card number with spaces
@@ -32,7 +34,7 @@ export default function Card({
   };
 
   // Get gradient colors based on card variant
-  const getGradientColors = (): string[] => {
+  const getGradientColors = (): [string, string] => {
     switch (variant) {
       case 'primary':
         return [colors.primary, colors.primaryDark];
@@ -89,10 +91,12 @@ export default function Card({
           </View>
         </View>
 
-        {balance && (
+        {typeof balance === 'number' && (
           <View style={styles.balanceContainer}>
             <Text style={styles.balanceLabel}>BALANCE</Text>
-            <Text style={styles.balanceValue}>{balance}</Text>
+            <Text style={styles.balanceValue}>
+              {loading ? '...' : `$${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+            </Text>
           </View>
         )}
       </LinearGradient>

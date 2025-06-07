@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,7 +6,8 @@ import {
   FlatList, 
   TouchableOpacity, 
   Image,
-  RefreshControl
+  RefreshControl,
+  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +15,9 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { layout } from '@/constants/layout';
 import { useRouter } from 'expo-router';
+import { fetchCoinGeckoPrices } from '../../utils/marketData';
+import TransactionItem from '@/components/TransactionItem';
+import TokenCard from '@/components/TokenCard';
 
 // Type definitions for staking items
 interface StakingOption {
@@ -34,15 +38,13 @@ interface StakedAsset {
   logo: string;
   stakedAmount: number;
   rewards: number;
-  valueUSD: number;
-  rewardsUSD: number;
   apr: number;
   status: 'active' | 'locked' | 'completed';
   startDate: string;
   endDate: string;
 }
 
-const STAKED_ASSETS: StakedAsset[] = [
+const STAKED_ASSETS = [
   {
     id: '1',
     name: 'Bitcoin',
@@ -50,10 +52,8 @@ const STAKED_ASSETS: StakedAsset[] = [
     logo: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png',
     stakedAmount: 0.5,
     rewards: 0.01,
-    valueUSD: 5000,
-    rewardsUSD: 250,
     apr: 2.5,
-    status: 'active',
+    status: 'active' as const,
     startDate: '2023-01-01',
     endDate: '2023-12-31',
   },
@@ -64,10 +64,8 @@ const STAKED_ASSETS: StakedAsset[] = [
     logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
     stakedAmount: 2,
     rewards: 0.05,
-    valueUSD: 6000,
-    rewardsUSD: 300,
     apr: 3.0,
-    status: 'locked',
+    status: 'locked' as const,
     startDate: '2023-01-01',
     endDate: '2024-01-01',
   },
@@ -78,10 +76,8 @@ const STAKED_ASSETS: StakedAsset[] = [
     logo: 'https://cryptologos.cc/logos/litecoin-ltc-logo.png',
     stakedAmount: 10,
     rewards: 0.1,
-    valueUSD: 1500,
-    rewardsUSD: 150,
     apr: 4.0,
-    status: 'completed',
+    status: 'completed' as const,
     startDate: '2022-01-01',
     endDate: '2023-01-01',
   },
@@ -123,8 +119,13 @@ const STAKING_OPTIONS: StakingOption[] = [
 export default function StakingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('my-stakes');
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -133,10 +134,32 @@ export default function StakingScreen() {
     }, 1500);
   }, []);
 
+  useEffect(() => {
+    async function loadPrices() {
+      setLoadingPrices(true);
+      setPriceError(null);
+      const symbols = STAKED_ASSETS.map(a => a.symbol);
+      try {
+        const result = await fetchCoinGeckoPrices(symbols);
+        setPrices(result);
+      } catch (e) {
+        setPriceError('Failed to load prices');
+      }
+      setLoadingPrices(false);
+    }
+    loadPrices();
+  }, []);
+
   const renderStakingItem = ({ item }: { item: StakingOption }) => {
     return (
       <TouchableOpacity 
-        style={styles.stakingItem}
+        style={[
+          styles.stakingItem,
+          isDark && { 
+            backgroundColor: colors.dark.surface2,
+            borderColor: colors.dark.border
+          }
+        ]}
         onPress={() => router.push(`staking-detail?id=${item.id}` as any)}
       >
         <View style={styles.stakingItemTop}>
@@ -146,20 +169,45 @@ export default function StakingScreen() {
               style={styles.coinLogo} 
             />
             <View>
-              <Text style={styles.stakingName}>{item.name}</Text>
-              <Text style={styles.lockPeriod}>{item.lockPeriod} lock</Text>
+              <Text style={[
+                styles.stakingName,
+                isDark && { color: colors.darkText }
+              ]}>
+                {item.name}
+              </Text>
+              <Text style={[
+                styles.lockPeriod,
+                isDark && { color: colors.darkTextSecondary }
+              ]}>
+                {item.lockPeriod} lock
+              </Text>
             </View>
           </View>
           <View style={styles.aprContainer}>
-            <Text style={styles.aprLabel}>APR</Text>
-            <Text style={styles.aprValue}>{item.apr}%</Text>
+            <Text style={[
+              styles.aprLabel,
+              isDark && { color: colors.darkTextSecondary }
+            ]}>APR</Text>
+            <Text style={[
+              styles.aprValue,
+              isDark && { color: colors.dark.primaryAccent }
+            ]}>{item.apr}%</Text>
           </View>
         </View>
         <View style={styles.stakingItemBottom}>
-          <Text style={styles.stakingDescription}>{item.description}</Text>
+          <Text style={[
+            styles.stakingDescription,
+            isDark && { color: colors.darkTextSecondary }
+          ]}>{item.description}</Text>
           <View style={styles.minStakeContainer}>
-            <Text style={styles.minStakeLabel}>Min. Stake:</Text>
-            <Text style={styles.minStakeValue}>{item.minAmount} {item.symbol}</Text>
+            <Text style={[
+              styles.minStakeLabel,
+              isDark && { color: colors.darkTextSecondary }
+            ]}>Min. Stake:</Text>
+            <Text style={[
+              styles.minStakeValue,
+              isDark && { color: colors.dark.primaryAccent }
+            ]}>{item.minAmount} {item.symbol}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -169,11 +217,20 @@ export default function StakingScreen() {
   const renderStakedItem = ({ item }: { item: StakedAsset }) => {
     return (
       <TouchableOpacity 
-        style={styles.stakedItem}
+        style={[
+          styles.stakedItem,
+          isDark && { 
+            backgroundColor: colors.dark.surface2,
+            borderColor: colors.dark.border
+          }
+        ]}
         onPress={() => router.push(`staked-detail?id=${item.id}` as any)}
       >
         <LinearGradient
-          colors={[colors.primary, colors.primaryDark || colors.primary]}
+          colors={isDark ? 
+            [colors.dark.primaryAccent, colors.dark.surface3] :
+            [colors.primary, colors.primaryDark || colors.primary]
+          }
           style={styles.stakedItemTop}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -185,14 +242,20 @@ export default function StakingScreen() {
                 style={styles.stakedLogo} 
               />
               <View>
-                <Text style={styles.stakedName}>{item.name}</Text>
+                <Text style={[
+                  styles.stakedName,
+                  isDark && { color: colors.white }
+                ]}>{item.name}</Text>
                 <View style={styles.statusContainer}>
                   <View style={[
                     styles.statusDot, 
                     item.status === 'active' ? styles.statusActive : 
                     item.status === 'locked' ? styles.statusLocked : styles.statusCompleted
                   ]} />
-                  <Text style={styles.statusText}>
+                  <Text style={[
+                    styles.statusText,
+                    isDark && { color: colors.darkTextSecondary }
+                  ]}>
                     {item.status === 'active' ? 'Active' : 
                      item.status === 'locked' ? 'Locked' : 'Completed'}
                   </Text>
@@ -200,31 +263,68 @@ export default function StakingScreen() {
               </View>
             </View>
             <View style={styles.stakedAprContainer}>
-              <Text style={styles.stakedAprLabel}>APR</Text>
-              <Text style={styles.stakedAprValue}>{item.apr}%</Text>
+              <Text style={[
+                styles.stakedAprLabel,
+                isDark && { color: colors.darkTextSecondary }
+              ]}>APR</Text>
+              <Text style={[
+                styles.stakedAprValue,
+                isDark && { color: colors.white }
+              ]}>{item.apr}%</Text>
             </View>
           </View>
 
           <View style={styles.stakedDetails}>
             <View style={styles.stakedDetailItem}>
-              <Text style={styles.stakedDetailLabel}>Staked</Text>
-              <Text style={styles.stakedDetailValue}>{item.stakedAmount} {item.symbol}</Text>
-              <Text style={styles.stakedDetailSubvalue}>${item.valueUSD.toLocaleString()}</Text>
+              <Text style={[
+                styles.stakedDetailLabel,
+                isDark && { color: colors.darkTextSecondary }
+              ]}>Staked</Text>
+              <Text style={[
+                styles.stakedDetailValue,
+                isDark && { color: colors.white }
+              ]}>{item.stakedAmount} {item.symbol}</Text>
+              <Text style={[
+                styles.stakedDetailSubvalue,
+                isDark && { color: colors.darkTextSecondary }
+              ]}>
+                {loadingPrices ? '...' : `$${(item.stakedAmount * (prices[item.symbol] ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              </Text>
             </View>
             <View style={styles.stakedDetailItem}>
-              <Text style={styles.stakedDetailLabel}>Rewards</Text>
-              <Text style={styles.stakedDetailValue}>{item.rewards} {item.symbol}</Text>
-              <Text style={styles.stakedDetailSubvalue}>${item.rewardsUSD.toFixed(2)}</Text>
+              <Text style={[
+                styles.stakedDetailLabel,
+                isDark && { color: colors.darkTextSecondary }
+              ]}>Rewards</Text>
+              <Text style={[
+                styles.stakedDetailValue,
+                isDark && { color: colors.white }
+              ]}>{item.rewards} {item.symbol}</Text>
+              <Text style={[
+                styles.stakedDetailSubvalue,
+                isDark && { color: colors.darkTextSecondary }
+              ]}>
+                {loadingPrices ? '...' : `$${(item.rewards * (prices[item.symbol] ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              </Text>
             </View>
           </View>
         </LinearGradient>
 
         <View style={styles.stakedItemBottom}>
           <View style={styles.periodContainer}>
-            <Text style={styles.periodLabel}>Period:</Text>
-            <Text style={styles.periodValue}>{item.startDate} - {item.endDate}</Text>
+            <Text style={[
+              styles.periodLabel,
+              isDark && { color: colors.darkTextSecondary }
+            ]}>Period:</Text>
+            <Text style={[
+              styles.periodValue,
+              isDark && { color: colors.darkText }
+            ]}>{item.startDate} - {item.endDate}</Text>
           </View>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={[
+            styles.actionButton,
+            isDark && { backgroundColor: colors.dark.primaryAccent }
+          ]}>
             <Text style={styles.actionButtonText}>
               {item.status === 'active' ? 'Claim Rewards' : 
                item.status === 'locked' ? 'View Details' : 'Restake'}
@@ -236,40 +336,94 @@ export default function StakingScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
+    <View style={[
+      styles.container,
+      isDark && { backgroundColor: colors.dark.surface1 }
+    ]}> 
       <View style={styles.header}>
-        <Text style={styles.screenTitle}>Staking</Text>
-        <TouchableOpacity style={styles.infoButton}>
-          <Feather name="info" size={22} color={colors.primary} />
+        <Text style={[
+          styles.screenTitle,
+          isDark && { color: colors.darkText }
+        ]}>Staking</Text>
+        <TouchableOpacity style={[
+          styles.infoButton,
+          isDark && { backgroundColor: colors.dark.surface2 }
+        ]}>
+          <Feather 
+            name="info" 
+            size={22} 
+            color={isDark ? colors.darkText : colors.primary} 
+          />
         </TouchableOpacity>
       </View>
 
-      {/* Summary Card */}
-      <View style={styles.summaryCard}>
+      <View style={[
+        styles.summaryCard,
+        isDark && { 
+          backgroundColor: colors.dark.surface2,
+          borderColor: colors.dark.border
+        }
+      ]}>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Total Staked</Text>
-          <Text style={styles.summaryValue}>$10,708.40</Text>
+          <Text style={[
+            styles.summaryLabel,
+            isDark && { color: colors.darkTextSecondary }
+          ]}>Total Staked</Text>
+          <Text style={[
+            styles.summaryValue,
+            isDark && { color: colors.dark.primaryAccent }
+          ]}>$10,708.40</Text>
         </View>
-        <View style={styles.summaryDivider} />
+        <View style={[
+          styles.summaryDivider,
+          isDark && { backgroundColor: colors.dark.border }
+        ]} />
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Total Rewards</Text>
-          <Text style={styles.summaryValue}>$146.36</Text>
+          <Text style={[
+            styles.summaryLabel,
+            isDark && { color: colors.darkTextSecondary }
+          ]}>Total Rewards</Text>
+          <Text style={[
+            styles.summaryValue,
+            isDark && { color: colors.dark.primaryAccent }
+          ]}>$146.36</Text>
         </View>
       </View>
 
-      {/* Tab Selection */}
-      <View style={styles.tabsContainer}>
+      <View style={[
+        styles.tabsContainer,
+        isDark && { 
+          backgroundColor: colors.dark.surface2,
+          borderColor: colors.dark.border
+        }
+      ]}>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'my-stakes' && styles.activeTab]}
+          style={[
+            styles.tab, 
+            activeTab === 'my-stakes' && styles.activeTab,
+            isDark && activeTab !== 'my-stakes' && { backgroundColor: colors.dark.surface2 }
+          ]}
           onPress={() => setActiveTab('my-stakes')}
         >
-          <Text style={[styles.tabText, activeTab === 'my-stakes' && styles.activeTabText]}>My Stakes</Text>
+          <Text style={[
+            styles.tabText,
+            activeTab === 'my-stakes' && styles.activeTabText,
+            isDark && { color: activeTab === 'my-stakes' ? colors.white : colors.darkTextSecondary }
+          ]}>My Stakes</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'available' && styles.activeTab]}
+          style={[
+            styles.tab,
+            activeTab === 'available' && styles.activeTab,
+            isDark && activeTab !== 'available' && { backgroundColor: colors.dark.surface2 }
+          ]}
           onPress={() => setActiveTab('available')}
         >
-          <Text style={[styles.tabText, activeTab === 'available' && styles.activeTabText]}>Available Assets</Text>
+          <Text style={[
+            styles.tabText,
+            activeTab === 'available' && styles.activeTabText,
+            isDark && { color: activeTab === 'available' ? colors.white : colors.darkTextSecondary }
+          ]}>Available Assets</Text>
         </TouchableOpacity>
       </View>
 
@@ -281,14 +435,28 @@ export default function StakingScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor={isDark ? colors.darkText : colors.primary}
+            />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="percent-outline" size={60} color={colors.lightGrey} />
-              <Text style={styles.emptyText}>You don't have any staked assets yet</Text>
+              <MaterialCommunityIcons 
+                name="percent-outline" 
+                size={60} 
+                color={isDark ? colors.darkTextSecondary : colors.lightGrey} 
+              />
+              <Text style={[
+                styles.emptyText,
+                isDark && { color: colors.darkTextSecondary }
+              ]}>You don't have any staked assets yet</Text>
               <TouchableOpacity 
-                style={styles.stakeNowButton}
+                style={[
+                  styles.stakeNowButton,
+                  isDark && { backgroundColor: colors.dark.primaryAccent }
+                ]}
                 onPress={() => setActiveTab('available')}
               >
                 <Text style={styles.stakeNowText}>Stake Now</Text>
@@ -304,10 +472,19 @@ export default function StakingScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor={isDark ? colors.darkText : colors.primary}
+            />
           }
         />
       )}
+
+      {/* Example usage for asset and transaction lists:
+      <TokenCard name="Bitcoin" symbol="BTC" amount="0.45 BTC" value={0.45 * (prices['BTC'] ?? 0)} loading={loadingPrices} change="+5.2%" trending="up" color={colors.bitcoin} />
+      <TransactionItem type="receive" amount="0.1 BTC" value={0.1 * (prices['BTC'] ?? 0)} loading={loadingPrices} sender="John Doe" date="2025-06-01" />
+      */}
     </View>
   );
 }

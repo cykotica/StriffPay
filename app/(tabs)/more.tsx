@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   Dimensions,
+  useColorScheme,
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
@@ -52,20 +53,8 @@ const menuItems = [
         id: 'deposit', 
         name: 'Deposit', 
         icon: DollarSign, 
-        route: '/deposit'
-      },
-      { 
-        id: 'staking-detail', 
-        name: 'Staking Detail', 
-        icon: PiggyBank, 
-        route: '/staking-detail'
-      },
-      { 
-        id: 'staked-detail', 
-        name: 'Staked Detail', 
-        icon: PiggyBank, 
-        route: '/staked-detail'
-      },
+        route: '/(deposit)/deposit' 
+      }
     ]
   },
   {
@@ -124,18 +113,50 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isSmallScreen = SCREEN_WIDTH < 375;
 const isMediumScreen = SCREEN_WIDTH < 430;
 
+// Dark mode context
+export const DarkModeContext = createContext({
+  darkMode: false,
+  setDarkMode: (val: boolean) => {},
+});
+
+export function useDarkMode() {
+  return useContext(DarkModeContext);
+}
+
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
+  const systemColorScheme = useColorScheme();
   const [toggles, setToggles] = React.useState({
     notifications: true,
-    darkMode: false,
+    darkMode: systemColorScheme === 'dark',
   });
+  const [darkMode, setDarkMode] = React.useState(systemColorScheme === 'dark');
+
+  // Provide dark mode context to all children
+  const darkModeValue = useMemo(() => ({ darkMode, setDarkMode }), [darkMode]);
+
+  React.useEffect(() => {
+    if (darkMode) {
+      if (typeof document !== 'undefined') {
+        document.body.style.backgroundColor = '#121212';
+        document.body.style.color = '#fff';
+      }
+    } else {
+      if (typeof document !== 'undefined') {
+        document.body.style.backgroundColor = '#fff';
+        document.body.style.color = '#212121';
+      }
+    }
+  }, [darkMode]);
 
   const handleToggle = (id: 'notifications' | 'darkMode') => {
     setToggles(prev => ({
       ...prev,
       [id]: !prev[id],
     }));
+    if (id === 'darkMode') {
+      setDarkMode(prev => !prev);
+    }
   };
 
   const handleLogout = () => {
@@ -143,95 +164,103 @@ export default function MoreScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[
-        styles.header,
-        { paddingTop: insets.top + layout.spacing.md }
-      ]}>
-        <Text style={styles.headerTitle}>More</Text>
-      </View>
+    <DarkModeContext.Provider value={darkModeValue}>
+      <View style={[styles.container, darkMode && { backgroundColor: '#121212' }]}> 
+        <View style={[
+          styles.header,
+          { paddingTop: insets.top + layout.spacing.md }
+        ]}>
+          <Text style={[styles.headerTitle, darkMode && { color: '#fff' }]}>More</Text>
+        </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile Card */}
-        <TouchableOpacity 
-          style={styles.profileCard}
-          onPress={() => router.push('/profile' as any)}
+        <ScrollView 
+          contentContainerStyle={[styles.scrollContent, darkMode && { backgroundColor: '#121212' }]}
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.profileAvatar}>
-            <Text style={styles.profileInitials}>MS</Text>
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>Michael Scott</Text>
-            <Text style={styles.profileEmail}>michael.scott@example.com</Text>
-          </View>
-          <ChevronRight size={20} color={colors.grey} />
-        </TouchableOpacity>
-
-        {/* Menu Sections */}
-        {menuItems.map((section, index) => (
-          <View key={section.title} style={styles.menuSection}>
-            <Text style={styles.menuSectionTitle}>{section.title}</Text>
-            <View style={styles.menuCard}>
-              {section.items.map((item, itemIndex) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.menuItem,
-                    itemIndex !== section.items.length - 1 && styles.menuItemBorder,
-                  ]}
-                  onPress={() => {
-                    if ('toggle' in item && item.toggle) {
-                      handleToggle(item.id as 'notifications' | 'darkMode');
-                    } else if ('route' in item && item.route) {
-                      router.push(item.route as any);
-                    }
-                  }}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <View style={[styles.menuItemIcon, { backgroundColor: getIconBackground(item.id) }]}>
-                      <item.icon size={20} color={getIconColor(item.id)} />
-                    </View>
-                    <Text style={styles.menuItemText}>{item.name}</Text>
-                    {('badge' in item && item.badge) && (
-                      <View style={styles.menuItemBadge}>
-                        <Text style={styles.menuItemBadgeText}>{item.badge}</Text>
-                      </View>
-                    )}
-                  </View>
-                  {('toggle' in item && item.toggle) ? (
-                    <Switch
-                      value={toggles[item.id as 'notifications' | 'darkMode']}
-                      onValueChange={() => handleToggle(item.id as 'notifications' | 'darkMode')}
-                      trackColor={{ false: colors.lightGrey, true: colors.primary }}
-                      thumbColor={toggles[item.id as 'notifications' | 'darkMode'] ? colors.primary : colors.white}
-                      ios_backgroundColor={colors.lightGrey}
-                    />
-                  ) : (
-                    <ChevronRight size={20} color={colors.grey} />
-                  )}
-                </TouchableOpacity>
-              ))}
+          {/* Profile Card */}
+          <TouchableOpacity 
+            style={[
+              styles.profileCard,
+              darkMode && {
+                backgroundColor: colors.dark.surface2,
+                shadowColor: colors.dark.cardShadow,
+              }
+            ]}
+            onPress={() => router.push('/profile' as any)}
+          >
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileInitials}>MS</Text>
             </View>
-          </View>
-        ))}
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>Michael Scott</Text>
+              <Text style={styles.profileEmail}>michael.scott@example.com</Text>
+            </View>
+            <ChevronRight size={20} color={colors.grey} />
+          </TouchableOpacity>
 
-        {/* Logout Button */}
-        <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <LogOut size={20} color={colors.error} />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+          {/* Menu Sections */}
+          {menuItems.map((section, index) => (
+            <View key={section.title} style={styles.menuSection}>
+              <Text style={styles.menuSectionTitle}>{section.title}</Text>
+              <View style={[styles.menuCard, darkMode && styles.darkMenuCard]}>
+                {section.items.map((item, itemIndex) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.menuItem,
+                      itemIndex !== section.items.length - 1 && [styles.menuItemBorder, darkMode && styles.darkMenuItem],
+                    ]}
+                    onPress={() => {
+                      if ('toggle' in item && item.toggle) {
+                        handleToggle(item.id as 'notifications' | 'darkMode');
+                      } else if ('route' in item && item.route) {
+                        router.push(item.route as any);
+                      }
+                    }}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <View style={[styles.menuItemIcon, { backgroundColor: getIconBackground(item.id) }]}>
+                        <item.icon size={20} color={getIconColor(item.id)} />
+                      </View>
+                      <Text style={[styles.menuItemText, darkMode && { color: '#fff' }]}>{item.name}</Text>
+                      {('badge' in item && item.badge) && (
+                        <View style={styles.menuItemBadge}>
+                          <Text style={styles.menuItemBadgeText}>{item.badge}</Text>
+                        </View>
+                      )}
+                    </View>
+                    {('toggle' in item && item.toggle) ? (
+                      <Switch
+                        value={toggles[item.id as 'notifications' | 'darkMode']}
+                        onValueChange={() => handleToggle(item.id as 'notifications' | 'darkMode')}
+                        trackColor={{ false: colors.lightGrey, true: colors.primary }}
+                        thumbColor={toggles[item.id as 'notifications' | 'darkMode'] ? colors.primary : colors.white}
+                        ios_backgroundColor={colors.lightGrey}
+                      />
+                    ) : (
+                      <ChevronRight size={20} color={colors.grey} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
 
-        <Text style={styles.versionText}>
-          Version 1.0.0 (200)
-        </Text>
-      </ScrollView>
-    </View>
+          {/* Logout Button */}
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <LogOut size={20} color={colors.error} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.versionText}>
+            Version 1.0.0 (200)
+          </Text>
+        </ScrollView>
+      </View>
+    </DarkModeContext.Provider>
   );
 }
 
@@ -371,6 +400,13 @@ const styles = StyleSheet.create({
   menuItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.extraLightGrey,
+  },
+  darkMenuCard: {
+    backgroundColor: colors.dark.surface2,
+    shadowColor: colors.dark.cardShadow,
+  },
+  darkMenuItem: {
+    borderBottomColor: colors.dark.divider,
   },
   menuItemLeft: {
     flexDirection: 'row',

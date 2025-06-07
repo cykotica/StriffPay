@@ -8,7 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
+  useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '@/constants/colors';
@@ -20,6 +20,8 @@ import { Lock, Mail, Eye, EyeOff } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -37,78 +39,124 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={[{ flex: 1 }, isDark && { backgroundColor: colors.dark.surface1 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView 
         contentContainerStyle={[
           styles.container,
-          { paddingTop: insets.top + layout.spacing.xl, paddingBottom: insets.bottom + layout.spacing.xl }
+          { paddingTop: insets.top + layout.spacing.xl, paddingBottom: insets.bottom + layout.spacing.xl },
+          isDark && { backgroundColor: colors.dark.surface1 }
         ]}
       >
+        {/* Logo and Title Section */}
         <View style={styles.header}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>SP</Text>
+          <View style={[styles.logoCircle, isDark && { backgroundColor: colors.dark.surface3 }]}>
+            <Text style={[styles.logoText, isDark && { color: colors.dark.primaryAccent }]}>SP</Text>
           </View>
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
+          <Text style={[styles.title, isDark && { color: colors.darkText }]}>
+            Welcome Back
+          </Text>
+          <Text style={[styles.subtitle, isDark && { color: colors.darkTextSecondary }]}>
+            Login to access your crypto wallet
+          </Text>
         </View>
 
+        {/* Form Section */}
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Mail size={20} color={colors.grey} style={styles.inputIcon} />
+          {/* Email Input */}
+          <View style={[
+            styles.inputContainer,
+            isDark && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border
+            }
+          ]}>
+            <Mail 
+              size={20} 
+              color={isDark ? colors.darkTextSecondary : colors.grey} 
+              style={styles.inputIcon} 
+            />
             <TextInput
+              style={[styles.input, isDark && { color: colors.darkText }]}
               placeholder="Email"
+              placeholderTextColor={isDark ? colors.darkTextSecondary : colors.grey}
               value={email}
               onChangeText={setEmail}
-              style={styles.input}
-              placeholderTextColor={colors.grey}
-              keyboardType="email-address"
               autoCapitalize="none"
+              keyboardType="email-address"
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Lock size={20} color={colors.grey} style={styles.inputIcon} />
+          {/* Password Input */}
+          <View style={[
+            styles.inputContainer,
+            isDark && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border
+            }
+          ]}>
+            <Lock 
+              size={20} 
+              color={isDark ? colors.darkTextSecondary : colors.grey} 
+              style={styles.inputIcon} 
+            />
             <TextInput
+              style={[styles.input, isDark && { color: colors.darkText }]}
               placeholder="Password"
+              placeholderTextColor={isDark ? colors.darkTextSecondary : colors.grey}
+              secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
-              style={styles.input}
-              placeholderTextColor={colors.grey}
-              secureTextEntry={!showPassword}
             />
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
+            <TouchableOpacity
               style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? 
-                <EyeOff size={20} color={colors.grey} /> : 
-                <Eye size={20} color={colors.grey} />
-              }
+              {showPassword ? (
+                <EyeOff size={20} color={isDark ? colors.darkTextSecondary : colors.grey} />
+              ) : (
+                <Eye size={20} color={isDark ? colors.darkTextSecondary : colors.grey} />
+              )}
             </TouchableOpacity>
           </View>
 
+          {/* Forgot Password Link */}
           <TouchableOpacity
-            onPress={() => router.push('/(auth)/forgot-password')}
             style={styles.forgotPasswordContainer}
+            onPress={() => router.push('/forgot-password')}
           >
-            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+            <Text style={[
+              styles.forgotPasswordText,
+              isDark && { color: colors.dark.primaryAccent }
+            ]}>
+              Forgot Password?
+            </Text>
           </TouchableOpacity>
 
+          {/* Login Button */}
           <Button
-            title="Sign In"
+            title="Login"
             onPress={handleLogin}
             loading={isLoading}
             style={styles.button}
+            darkMode={isDark}
           />
+        </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.signUpText}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Footer Section */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, isDark && { color: colors.darkTextSecondary }]}>
+            Don't have an account?
+          </Text>
+          <TouchableOpacity onPress={() => router.push('/register')}>
+            <Text style={[
+              styles.signUpText,
+              isDark && { color: colors.dark.primaryAccent }
+            ]}>
+              {' '}Sign Up
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

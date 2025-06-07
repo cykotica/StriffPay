@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,6 +8,7 @@ import {
   Image,
   Animated,
   FlatList,
+  Easing,
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
@@ -28,6 +29,10 @@ import {
 } from 'lucide-react-native';
 import Button from '@/components/Button';
 import { useRouter } from 'expo-router';
+import { useDarkMode } from './more';
+import { fetchCoinGeckoPrices } from '../../utils/marketData';
+import TransactionItem from '@/components/TransactionItem';
+import TokenCard from '@/components/TokenCard';
 
 // Mock data
 const transactions = [
@@ -63,7 +68,7 @@ const cryptoAssets = [
     name: 'Bitcoin',
     symbol: 'BTC',
     amount: '0.45 BTC',
-    value: '$20,250.00',
+    balance: 0.45,
     change: '+5.2%',
     trending: 'up',
     color: colors.bitcoin,
@@ -73,7 +78,7 @@ const cryptoAssets = [
     name: 'Ethereum',
     symbol: 'ETH',
     amount: '3.25 ETH',
-    value: '$6,647.50',
+    balance: 3.25,
     change: '-1.8%',
     trending: 'down',
     color: colors.ethereum,
@@ -83,18 +88,57 @@ const cryptoAssets = [
     name: 'Tether',
     symbol: 'USDT',
     amount: '350 USDT',
-    value: '$350.00',
+    balance: 350,
     change: '+0.1%',
     trending: 'up',
     color: colors.tether,
   },
 ];
 
+// Shimmer effect for balance
+function Shimmer({ width, height, style }: { width: number; height: number; style?: any }) {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: true,
+        easing: Easing.linear,
+      })
+    ).start();
+  }, []);
+  const translateX = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-width, width],
+  });
+  return (
+    <View style={[{ width, height, backgroundColor: '#222', overflow: 'hidden', borderRadius: 8 }, style]}>
+      <Animated.View
+        style={{
+          width: width * 1.5,
+          height,
+          backgroundColor: '#444',
+          opacity: 0.5,
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          transform: [{ translateX }],
+        }}
+      />
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [balanceVisible, setBalanceVisible] = useState(true);
   const router = useRouter();
+  const { darkMode } = useDarkMode();
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   // Header animations
   const headerOpacity = scrollY.interpolate({
@@ -109,8 +153,41 @@ export default function HomeScreen() {
     extrapolate: 'clamp',
   });
 
+  // Animation values for sections
+  const sectionAnim = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+
+  React.useEffect(() => {
+    Animated.stagger(200, [
+      Animated.timing(sectionAnim[0], { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.exp) }),
+      Animated.timing(sectionAnim[1], { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.exp) }),
+      Animated.timing(sectionAnim[2], { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.exp) }),
+    ]).start();
+  }, []);
+
+  useEffect(() => {
+    async function loadPrices() {
+      setLoadingPrices(true);
+      setPriceError(null);
+      const symbols = cryptoAssets.map(a => a.symbol);
+      try {
+        const result = await fetchCoinGeckoPrices(symbols);
+        setPrices(result);
+      } catch (e) {
+        setPriceError('Failed to load prices');
+      }
+      setLoadingPrices(false);
+    }
+    loadPrices();
+  }, []);
+
+  // Calculate total portfolio value
+  const totalPortfolio = cryptoAssets.reduce((sum, asset) => {
+    const price = prices[asset.symbol] ?? 0;
+    return sum + asset.balance * price;
+  }, 0);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, darkMode && { backgroundColor: '#121212' }]}> 
       {/* Animated Header */}
       <Animated.View 
         style={[
@@ -119,10 +196,12 @@ export default function HomeScreen() {
             opacity: headerOpacity,
             height: headerHeight,
             paddingTop: insets.top,
+            backgroundColor: darkMode ? '#1a1a1a' : styles.animatedHeader.backgroundColor,
+            borderBottomColor: darkMode ? '#222' : styles.animatedHeader.borderBottomColor,
           }
         ]}
       >
-        <Text style={styles.headerTitle}>Home</Text>
+        <Text style={[styles.headerTitle, darkMode && { color: '#fff' }]}>Home</Text>
       </Animated.View>
 
       <Animated.ScrollView
@@ -137,24 +216,29 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, darkMode && { backgroundColor: '#181818' }]}> {/* Add bg for header in dark mode */}
           <View>
-            <Text style={styles.greeting}>Hello, Investor</Text>
+            <Text style={[styles.greeting, darkMode && { color: '#fff' }]}>Hello, Investor</Text>
             <TouchableOpacity
               onPress={() => setBalanceVisible(!balanceVisible)}
               style={styles.balanceContainer}
+              activeOpacity={0.7}
             >
-              <Text style={styles.balanceLabel}>Total Balance</Text>
-              <Text style={styles.balanceAmount}>
-                {balanceVisible ? '$27,247.50' : '******'}
-              </Text>
+              <Text style={[styles.balanceLabel, darkMode && { color: '#bbb' }]}>Total Balance</Text>
+              {balanceVisible ? (
+                <Animated.Text style={[styles.balanceAmount, darkMode && { color: colors.primary }, { opacity: balanceVisible ? 1 : 0.5 }]}> {/* keep accent color for balance */}
+                  ${totalPortfolio.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </Animated.Text>
+              ) : (
+                <Shimmer width={120} height={32} style={{ marginTop: 4, marginBottom: 4 }} />
+              )}
             </TouchableOpacity>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity style={[styles.iconButton, darkMode && { backgroundColor: '#232323' }]} activeOpacity={0.7}>
               <QrCode size={24} color={colors.primary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity style={[styles.iconButton, darkMode && { backgroundColor: '#232323' }]} activeOpacity={0.7}>
               <Bell size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
@@ -162,159 +246,149 @@ export default function HomeScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/send')}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.primary }]}> 
-              <Send size={20} color={colors.white} />
-            </View>
-            <Text style={styles.actionButtonText}>Send</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/receive')}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.secondary }]}> 
-              <ArrowDownToLine size={20} color={colors.white} />
-            </View>
-            <Text style={styles.actionButtonText}>Receive</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/card')}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.success }]}> 
-              <CreditCard size={20} color={colors.white} />
-            </View>
-            <Text style={styles.actionButtonText}>Card</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('staking' as any)}>
-            <View style={[styles.actionButtonIcon, { backgroundColor: colors.accent }]}> 
-              <PiggyBank size={20} color={colors.white} />
-            </View>
-            <Text style={styles.actionButtonText}>Staking</Text>
-          </TouchableOpacity>
+          {[
+            { label: 'Send', icon: <Send size={20} color={colors.white} />, color: colors.primary, route: '/(tabs)/send' },
+            { label: 'Receive', icon: <ArrowDownToLine size={20} color={colors.white} />, color: colors.secondary, route: '/(tabs)/receive' },
+            { label: 'Card', icon: <CreditCard size={20} color={colors.white} />, color: colors.success, route: '/(tabs)/card' },
+            { label: 'Staking', icon: <PiggyBank size={20} color={colors.white} />, color: colors.accent, route: '/(stake)/staking' },
+          ].map((btn, i) => (
+            <Animated.View
+              key={btn.label}
+              style={{
+                transform: [
+                  {
+                    scale: scrollY.interpolate({
+                      inputRange: [0, 40],
+                      outputRange: [1, 0.95],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                ],
+              }}
+            >
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => router.push(btn.route as any)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.actionButtonIcon, { backgroundColor: btn.color }]}> {btn.icon} </View>
+                <Text style={[styles.actionButtonText, darkMode && { color: '#fff' }]}>{btn.label}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
         </View>
 
         {/* Portfolio Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Assets</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAllText}>See All</Text>
-              <ArrowRight size={16} color={colors.primary} />
+        <Animated.View
+          style={{
+            opacity: sectionAnim[0],
+            transform: [{ translateY: sectionAnim[0].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+          }}
+        >
+          <View style={[styles.sectionContainer, darkMode && { backgroundColor: '#181818', borderColor: '#232323' }]}> 
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, darkMode && { color: '#fff' }]}>Your Assets</Text>
+              <TouchableOpacity style={styles.seeAllButton}>
+                <Text style={[styles.seeAllText, darkMode && { color: colors.primary }]}>See All</Text>
+                <ArrowRight size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {cryptoAssets.map(asset => (
+              <TokenCard 
+                key={asset.id}
+                name={asset.name}
+                symbol={asset.symbol}
+                amount={asset.amount}
+                value={asset.balance * (prices[asset.symbol] ?? 0)}
+                loading={loadingPrices}
+                change={asset.change}
+                trending={asset.trending === 'up' ? 'up' : 'down'} // fix type
+                color={asset.color}
+                darkMode={darkMode}
+              />
+            ))}
+
+            <TouchableOpacity style={styles.addAssetButton} onPress={() => router.push('/(deposit)/deposit')}>
+              <Plus size={20} color={colors.primary} />
+              <Text style={[styles.addAssetText, darkMode && { color: colors.primary }]}>Add New Asset</Text>
             </TouchableOpacity>
           </View>
-
-          {cryptoAssets.map(asset => (
-            <TouchableOpacity key={asset.id} style={styles.assetCard}>
-              <View style={[styles.assetIconContainer, { backgroundColor: asset.color + '20' }]}>
-                <Text style={[styles.assetIcon, { color: asset.color }]}>{asset.symbol.charAt(0)}</Text>
-              </View>
-              <View style={styles.assetInfo}>
-                <Text style={styles.assetName}>{asset.name}</Text>
-                <Text style={styles.assetAmount}>{asset.amount}</Text>
-              </View>
-              <View style={styles.assetValues}>
-                <Text style={styles.assetValue}>{asset.value}</Text>
-                <View style={styles.assetChangeContainer}>
-                  {asset.trending === 'up' ? (
-                    <TrendingUp size={14} color={colors.success} />
-                  ) : (
-                    <TrendingDown size={14} color={colors.error} />
-                  )}
-                  <Text 
-                    style={[
-                      styles.assetChange,
-                      { color: asset.trending === 'up' ? colors.success : colors.error }
-                    ]}
-                  >
-                    {asset.change}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-
-          <TouchableOpacity style={styles.addAssetButton}>
-            <Plus size={20} color={colors.primary} />
-            <Text style={styles.addAssetText}>Add New Asset</Text>
-          </TouchableOpacity>
-        </View>
+        </Animated.View>
 
         {/* Market Trends Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Market Trends</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAllText}>See All</Text>
-              <ArrowRight size={16} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+        <Animated.View
+          style={{
+            opacity: sectionAnim[1],
+            transform: [{ translateY: sectionAnim[1].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+          }}
+        >
+          <View style={[styles.sectionContainer, darkMode && { backgroundColor: '#181818', borderColor: '#232323' }]}> 
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, darkMode && { color: '#fff' }]}>Market Trends</Text>
+              <TouchableOpacity style={styles.seeAllButton}>
+                <Text style={[styles.seeAllText, darkMode && { color: colors.primary }]}>See All</Text>
+                <ArrowRight size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.marketTrendsContainer}>
-            <View style={styles.marketChart}>
-              <BarChart4 size={150} color={colors.primary} strokeWidth={1} />
-            </View>
-            <View style={styles.marketStats}>
-              <View style={styles.marketStatItem}>
-                <Text style={styles.marketStatLabel}>BTC/USD</Text>
-                <Text style={styles.marketStatValue}>$45,000</Text>
-                <Text style={[styles.marketStatChange, { color: colors.success }]}>+2.5%</Text>
+            <View style={[styles.marketTrendsContainer, darkMode && { borderColor: '#232323', backgroundColor: '#181818' }]}> {/* Add bg for market trends in dark mode */}
+              <View style={styles.marketChart}>
+                <BarChart4 size={150} color={colors.primary} strokeWidth={1} />
               </View>
-              <View style={styles.marketStatItem}>
-                <Text style={styles.marketStatLabel}>ETH/USD</Text>
-                <Text style={styles.marketStatValue}>$2,045</Text>
-                <Text style={[styles.marketStatChange, { color: colors.error }]}>-1.3%</Text>
+              <View style={styles.marketStats}>
+                <View style={styles.marketStatItem}>
+                  <Text style={[styles.marketStatLabel, darkMode && { color: '#bbb' }]}>BTC/USD</Text>
+                  <Text style={[styles.marketStatValue, darkMode && { color: '#fff' }]}>${(prices['BTC'] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</Text>
+                  <Text style={[styles.marketStatChange, { color: colors.success }]}>+2.5%</Text>
+                </View>
+                <View style={styles.marketStatItem}>
+                  <Text style={[styles.marketStatLabel, darkMode && { color: '#bbb' }]}>ETH/USD</Text>
+                  <Text style={[styles.marketStatValue, darkMode && { color: '#fff' }]}>${(prices['ETH'] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</Text>
+                  <Text style={[styles.marketStatChange, { color: colors.error }]}>-1.3%</Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Recent Transactions Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAllText}>See All</Text>
-              <ArrowRight size={16} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+        <Animated.View
+          style={{
+            opacity: sectionAnim[2],
+            transform: [{ translateY: sectionAnim[2].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+          }}
+        >
+          <View style={[styles.sectionContainer, darkMode && { backgroundColor: '#181818', borderColor: '#232323' }]}> 
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, darkMode && { color: '#fff' }]}>Recent Transactions</Text>
+              <TouchableOpacity style={styles.seeAllButton}>
+                <Text style={[styles.seeAllText, darkMode && { color: colors.primary }]}>See All</Text>
+                <ArrowRight size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
 
-          {transactions.map(transaction => (
-            <TouchableOpacity key={transaction.id} style={styles.transactionCard}>
-              <View 
-                style={[
-                  styles.transactionIconContainer, 
-                  { backgroundColor: transaction.type === 'send' ? colors.accent + '20' : colors.success + '20' }
-                ]}
-              >
-                {transaction.type === 'send' ? (
-                  <Send size={20} color={colors.accent} />
-                ) : (
-                  <ArrowDownToLine size={20} color={colors.success} />
-                )}
-              </View>
-              
-              <View style={styles.transactionInfo}>
-                <Text style={styles.transactionType}>
-                  {transaction.type === 'send' ? 'Sent to ' : 'Received from '}
-                  <Text style={styles.transactionName}>
-                    {transaction.type === 'send' ? transaction.to : transaction.from}
-                  </Text>
-                </Text>
-                <Text style={styles.transactionDate}>{transaction.date}</Text>
-              </View>
-              
-              <View style={styles.transactionValues}>
-                <Text 
-                  style={[
-                    styles.transactionAmount,
-                    { color: transaction.type === 'send' ? colors.accent : colors.success }
-                  ]}
-                >
-                  {transaction.type === 'send' ? '-' : '+'}{transaction.amount}
-                </Text>
-                <Text style={styles.transactionValue}>{transaction.value}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            {transactions.map(transaction => (
+              <TransactionItem 
+                key={transaction.id}
+                type={transaction.type === 'send' ? 'send' : 'receive'}
+                amount={transaction.amount}
+                value={(() => {
+                  // Parse amount and symbol for live price
+                  const match = transaction.amount.match(/([\d.]+)\s*(\w+)/);
+                  if (!match) return 0;
+                  const [, amt, sym] = match;
+                  return parseFloat(amt) * (prices[sym] ?? 0);
+                })()}
+                loading={loadingPrices}
+                recipient={transaction.type === 'send' ? transaction.to : transaction.from || ''}
+                sender={transaction.type === 'receive' ? transaction.from : undefined}
+                date={transaction.date}
+                darkMode={darkMode}
+              />
+            ))}
+          </View>
+        </Animated.View>
       </Animated.ScrollView>
     </View>
   );

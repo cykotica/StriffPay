@@ -9,6 +9,8 @@ import {
   TouchableOpacityProps
 } from 'react-native';
 import { colors } from '@/constants/colors';
+import { fonts } from '@/constants/fonts';
+import { layout } from '@/constants/layout';
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -19,101 +21,17 @@ interface ButtonProps extends TouchableOpacityProps {
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
-}
-
-export default function Button({
-  title,
-  onPress,
-  variant = 'primary',
-  size = 'medium',
-  loading = false,
-  disabled = false,
-  style,
-  textStyle,
-  ...rest
-}: ButtonProps) {
-  const getButtonStyle = () => {
-    let buttonStyle: ViewStyle = { ...styles.button };
-    
-    // Handle variants
-    if (variant === 'primary') {
-      buttonStyle = { ...buttonStyle, ...styles.primaryButton };
-    } else if (variant === 'secondary') {
-      buttonStyle = { ...buttonStyle, ...styles.secondaryButton };
-    } else if (variant === 'outline') {
-      buttonStyle = { ...buttonStyle, ...styles.outlineButton };
-    } else if (variant === 'ghost') {
-      buttonStyle = { ...buttonStyle, ...styles.ghostButton };
-    }
-    
-    // Handle sizes
-    if (size === 'small') {
-      buttonStyle = { ...buttonStyle, ...styles.smallButton };
-    } else if (size === 'large') {
-      buttonStyle = { ...buttonStyle, ...styles.largeButton };
-    }
-    
-    // Handle disabled state
-    if (disabled || loading) {
-      buttonStyle = { 
-        ...buttonStyle, 
-        opacity: 0.6,
-      };
-    }
-    
-    return buttonStyle;
-  };
-  
-  const getTextStyle = () => {
-    let textStyleObj: TextStyle = { ...styles.buttonText };
-    
-    if (variant === 'primary') {
-      textStyleObj = { ...textStyleObj, ...styles.primaryText };
-    } else if (variant === 'secondary') {
-      textStyleObj = { ...textStyleObj, ...styles.secondaryText };
-    } else if (variant === 'outline') {
-      textStyleObj = { ...textStyleObj, ...styles.outlineText };
-    } else if (variant === 'ghost') {
-      textStyleObj = { ...textStyleObj, ...styles.ghostText };
-    }
-    
-    if (size === 'small') {
-      textStyleObj = { ...textStyleObj, ...styles.smallText };
-    } else if (size === 'large') {
-      textStyleObj = { ...textStyleObj, ...styles.largeText };
-    }
-    
-    return textStyleObj;
-  };
-  
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled || loading}
-      style={[getButtonStyle(), style]}
-      activeOpacity={0.7}
-      {...rest}
-    >
-      {loading ? (
-        <ActivityIndicator 
-          size="small" 
-          color={variant === 'primary' ? colors.white : colors.primary} 
-        />
-      ) : (
-        <Text style={[getTextStyle(), textStyle]}>{title}</Text>
-      )}
-    </TouchableOpacity>
-  );
+  darkMode?: boolean;
 }
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
-    justifyContent: 'center',
+    borderRadius: layout.radius.md,
     alignItems: 'center',
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    justifyContent: 'center',
+    paddingHorizontal: layout.spacing.xl,
+    paddingVertical: layout.spacing.md,
   },
   primaryButton: {
     backgroundColor: colors.primary,
@@ -130,17 +48,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   smallButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: layout.spacing.sm,
+    paddingHorizontal: layout.spacing.lg,
   },
   largeButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 18,
+    paddingVertical: layout.spacing.lg,
+    paddingHorizontal: layout.spacing.xxl,
   },
   buttonText: {
-    fontWeight: '600',
-    fontSize: 16,
+    fontFamily: fonts.medium,
+    fontSize: fonts.md,
     textAlign: 'center',
   },
   primaryText: {
@@ -155,10 +72,105 @@ const styles = StyleSheet.create({
   ghostText: {
     color: colors.primary,
   },
-  smallText: {
-    fontSize: 14,
-  },
-  largeText: {
-    fontSize: 18,
-  }
 });
+
+export default function Button({
+  title,
+  onPress,
+  variant = 'primary',
+  size = 'medium',
+  loading = false,
+  disabled = false,
+  style,
+  textStyle,
+  darkMode = false,
+  ...rest
+}: ButtonProps) {
+  const getButtonStyle = () => {
+    let buttonStyle: ViewStyle = { ...styles.button };
+    
+    if (variant === 'primary') {
+      buttonStyle = {
+        ...buttonStyle,
+        ...styles.primaryButton,
+        ...(darkMode && {
+          backgroundColor: colors.dark.primaryAccent,
+        }),
+      };
+    } else if (variant === 'secondary') {
+      buttonStyle = {
+        ...buttonStyle,
+        ...styles.secondaryButton,
+        ...(darkMode && {
+          backgroundColor: colors.dark.secondaryAccent,
+        }),
+      };
+    } else if (variant === 'outline') {
+      buttonStyle = {
+        ...buttonStyle,
+        ...styles.outlineButton,
+        ...(darkMode && {
+          borderColor: colors.dark.border,
+        }),
+      };
+    } else if (variant === 'ghost') {
+      buttonStyle = {
+        ...buttonStyle,
+        ...styles.ghostButton,
+      };
+    }
+    
+    if (size === 'small') {
+      buttonStyle = { ...buttonStyle, ...styles.smallButton };
+    } else if (size === 'large') {
+      buttonStyle = { ...buttonStyle, ...styles.largeButton };
+    }
+    
+    if (disabled || loading) {
+      buttonStyle = { ...buttonStyle, opacity: 0.6 };
+    }
+    
+    return buttonStyle;
+  };
+
+  const getTextStyle = () => {
+    let textStyleObj: TextStyle = { ...styles.buttonText };
+    
+    if (variant === 'primary' || variant === 'secondary') {
+      textStyleObj = {
+        ...textStyleObj,
+        ...styles.primaryText,
+        ...(darkMode && { color: colors.darkText }),
+      };
+    } else if (variant === 'outline' || variant === 'ghost') {
+      textStyleObj = {
+        ...textStyleObj,
+        ...(darkMode ? { color: colors.dark.primaryAccent } : styles.outlineText),
+      };
+    }
+    
+    return textStyleObj;
+  };
+
+  return (
+    <TouchableOpacity
+      style={[getButtonStyle(), style]}
+      onPress={onPress}
+      disabled={disabled || loading}
+      activeOpacity={0.7}
+      {...rest}
+    >
+      {loading ? (
+        <ActivityIndicator 
+          color={variant === 'outline' || variant === 'ghost'
+            ? (darkMode ? colors.dark.primaryAccent : colors.primary)
+            : colors.white} 
+        />
+      ) : (
+        <Text style={[getTextStyle(), textStyle]}>
+          {title}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+}

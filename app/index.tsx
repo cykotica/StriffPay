@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, StyleSheet, Text, Image, Animated } from 'react-native';
+import { View, StyleSheet, Text, Animated, useColorScheme } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SplashScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const opacity = new Animated.Value(0);
   const translateY = new Animated.Value(20);
 
@@ -38,7 +40,11 @@ export default function SplashScreen() {
     <View 
       style={[
         styles.container, 
-        { paddingTop: insets.top, paddingBottom: insets.bottom }
+        { 
+          paddingTop: insets.top, 
+          paddingBottom: insets.bottom,
+          backgroundColor: isDark ? colors.dark.surface1 : colors.primary
+        }
       ]}
     >
       <Animated.View 
@@ -47,11 +53,26 @@ export default function SplashScreen() {
           { opacity, transform: [{ translateY }] }
         ]}
       >
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoText}>SP</Text>
+        <View style={[
+          styles.logoCircle, 
+          { 
+            backgroundColor: isDark ? colors.dark.surface3 : colors.white,
+            ...layout.shadow.sm
+          }
+        ]}> 
+          <Text style={[
+            styles.logoText, 
+            { color: isDark ? colors.dark.primaryAccent : colors.primary }
+          ]}>SP</Text>
         </View>
-        <Text style={styles.appName}>StriffPay</Text>
-        <Text style={styles.tagline}>Secure, Fast, Borderless</Text>
+        <Text style={[
+          styles.appName, 
+          { color: isDark ? colors.darkText : colors.white }
+        ]}>StriffPay</Text>
+        <Text style={[
+          styles.tagline, 
+          { color: isDark ? colors.darkTextSecondary : colors.white, opacity: 0.8 }
+        ]}>Secure, Fast, Borderless</Text>
       </Animated.View>
     </View>
   );
@@ -60,7 +81,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    // backgroundColor set dynamically
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -71,7 +92,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.white,
+    // backgroundColor set dynamically
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: layout.spacing.lg,
@@ -79,18 +100,18 @@ const styles = StyleSheet.create({
   logoText: {
     fontFamily: fonts.bold,
     fontSize: fonts.display,
-    color: colors.primary,
+    // color set dynamically
   },
   appName: {
     fontFamily: fonts.bold,
     fontSize: fonts.display,
-    color: colors.white,
+    // color set dynamically
     marginBottom: layout.spacing.sm,
   },
   tagline: {
     fontFamily: fonts.regular,
     fontSize: fonts.lg,
-    color: colors.white,
+    // color set dynamically
     opacity: 0.8,
   },
 });

@@ -9,11 +9,13 @@ interface TokenCardProps {
   name: string;
   symbol: string;
   amount: string;
-  value: string;
+  value: number; // now expects a number (USD value)
+  loading?: boolean; // show loading state for value
   change: string;
   trending: 'up' | 'down';
   color: string;
   onPress?: () => void;
+  darkMode?: boolean;
 }
 
 export default function TokenCard({
@@ -21,14 +23,22 @@ export default function TokenCard({
   symbol,
   amount,
   value,
+  loading = false,
   change,
   trending,
   color,
   onPress,
+  darkMode = false,
 }: TokenCardProps) {
   return (
     <TouchableOpacity 
-      style={styles.container}
+      style={[
+        styles.container,
+        darkMode && {
+          backgroundColor: colors.dark.surface2,
+          borderColor: colors.dark.border
+        }
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -38,8 +48,8 @@ export default function TokenCard({
             <Text style={[styles.tokenSymbolText, { color }]}>{symbol.charAt(0)}</Text>
           </View>
           <View>
-            <Text style={styles.tokenName}>{name}</Text>
-            <Text style={styles.tokenSymbol}>{symbol}</Text>
+            <Text style={[styles.tokenName, darkMode && { color: colors.darkText }]}>{name}</Text>
+            <Text style={[styles.tokenSymbol, darkMode && { color: colors.darkTextSecondary }]}>{symbol}</Text>
           </View>
         </View>
         <View style={styles.changeContainer}>
@@ -49,27 +59,33 @@ export default function TokenCard({
             ) : (
               <TrendingDown size={14} color={colors.error} />
             )}
-            <Text
-              style={[
-                styles.tokenChange,
-                {
-                  color: trending === 'up' ? colors.success : colors.error,
-                },
-              ]}
-            >
-              {change}
-            </Text>
           </View>
+          <Text style={[
+            styles.changeText,
+            { color: trending === 'up' ? colors.success : colors.error }
+          ]}>{change}</Text>
         </View>
       </View>
-      <View style={styles.details}>
+
+      <View style={[styles.footer, darkMode && { borderTopColor: colors.dark.border }]}>
         <View>
-          <Text style={styles.detailLabel}>Amount</Text>
-          <Text style={styles.detailValue}>{amount}</Text>
+          <Text style={[styles.detailLabel, darkMode && { color: colors.darkTextSecondary }]}>Amount</Text>
+          <Text style={[styles.detailValue, darkMode && { color: colors.darkText }]}>{amount}</Text>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.detailLabel}>Value</Text>
-          <Text style={styles.detailValue}>{value}</Text>
+        <View>
+          <Text style={[styles.detailLabel, darkMode && { color: colors.darkTextSecondary }]}>Value USD</Text>
+          {loading ? (
+            <View style={{ 
+              height: 20, 
+              width: 80, 
+              backgroundColor: darkMode ? colors.dark.placeholder : '#eee', 
+              borderRadius: 4 
+            }} />
+          ) : (
+            <Text style={[styles.detailValue, darkMode && { color: colors.darkText }]}>
+              ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </Text>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -79,10 +95,11 @@ export default function TokenCard({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.white,
-    borderRadius: layout.radius.lg,
-    padding: layout.spacing.lg,
-    marginBottom: layout.spacing.md,
-    ...layout.shadow.sm,
+    borderRadius: layout.radius.md,
+    marginBottom: layout.spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGrey,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -123,14 +140,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  tokenChange: {
+  changeText: {
     fontFamily: fonts.medium,
     fontSize: fonts.sm,
     marginLeft: layout.spacing.xxs,
   },
-  details: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  footer: {
     paddingTop: layout.spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.extraLightGrey,

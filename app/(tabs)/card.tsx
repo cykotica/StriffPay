@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,6 +6,8 @@ import {
   ScrollView, 
   TouchableOpacity,
   Alert,
+  Platform,
+  AccessibilityInfo,
 } from 'react-native';
 import { colors } from '@/constants/colors';
 import { fonts } from '@/constants/fonts';
@@ -14,126 +16,291 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreditCard, Lock, Shield, ChevronRight } from 'lucide-react-native';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
+import { useDarkMode } from './more';
+import { fetchCoinGeckoPrices } from '../../utils/marketData';
 
 const mockCard = {
   cardNumber: '4111111111111111',
   cardHolderName: 'Michael Scott',
   expiryDate: '12/25',
   type: 'visa',
-  balance: '$1,234.56',
+  balance: 1234.56, // fallback if price fetch fails
+  symbol: 'USDC', // or the symbol for the card's asset
 };
 
 export default function CardScreen() {
   const insets = useSafeAreaInsets();
-  const [isCardFrozen, setIsCardFrozen] = useState(false);
+  const { darkMode } = useDarkMode();
+  const [loading, setLoading] = useState(false);
+  const [balance, setBalance] = useState(1234.56);
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadPrice() {
+      setLoading(true);
+      setPriceError(null);
+      try {
+        // Replace 'USDC' with the real symbol if needed
+        const prices = await fetchCoinGeckoPrices([mockCard.symbol]);
+        if (prices[mockCard.symbol]) {
+          setBalance(prices[mockCard.symbol]);
+        }
+      } catch (e) {
+        setPriceError('Failed to fetch live card balance');
+      }
+      setLoading(false);
+    }
+    loadPrice();
+  }, []);
+
+  // Add accessibility announcements for loading states
+  useEffect(() => {
+    if (loading) {
+      AccessibilityInfo.announceForAccessibility('Loading card balance');
+    } else if (priceError) {
+      AccessibilityInfo.announceForAccessibility('Failed to load card balance');
+    }
+  }, [loading, priceError]);
 
   const handleFreezeCard = () => {
-    setIsCardFrozen(!isCardFrozen);
-    Alert.alert(
-      isCardFrozen ? 'Card Unfrozen' : 'Card Frozen',
-      isCardFrozen ? 'Your card has been unfrozen and is ready to use.' : 'Your card has been frozen for security.',
-      [{ text: 'OK' }]
-    );
+    // Add freeze card logic
+  };
+
+  const mockCardData = {
+    cardNumber: '4485 7197 5047 8025',
+    cardHolderName: 'MICHAEL SCOTT',
+    expiryDate: '09/25',
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[
-        styles.header,
-        { paddingTop: insets.top + layout.spacing.md }
-      ]}>
-        <Text style={styles.headerTitle}>Card</Text>
+    <View 
+      style={[
+        styles.container,
+        darkMode && { backgroundColor: colors.dark.surface1 }
+      ]}
+      accessible={true}
+      accessibilityLabel="Card screen"
+    >
+      <View 
+        style={[
+          styles.header,
+          { paddingTop: insets.top + layout.spacing.md },
+          darkMode && { 
+            backgroundColor: colors.dark.surface2,
+            borderColor: colors.dark.border,
+            ...Platform.select({
+              ios: {
+                shadowColor: colors.dark.cardShadow,
+                shadowOpacity: 0.3,
+              },
+              android: {
+                elevation: 4,
+              },
+            }),
+          }
+        ]}
+      >
+        <Text 
+          style={[
+            styles.headerTitle, 
+            darkMode && { color: colors.darkText }
+          ]}
+          accessible={true}
+          accessibilityRole="header"
+        >Card</Text>
       </View>
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          darkMode && { backgroundColor: colors.dark.surface1 }
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Card
-          cardNumber={mockCard.cardNumber}
-          cardHolderName={mockCard.cardHolderName}
-          expiryDate={mockCard.expiryDate}
+          cardNumber={mockCardData.cardNumber}
+          cardHolderName={mockCardData.cardHolderName}
+          expiryDate={mockCardData.expiryDate}
           type="visa"
-          balance={mockCard.balance}
+          variant={darkMode ? 'dark' : 'primary'}
+          balance={balance}
+          loading={loading}
         />
+        {priceError && (
+          <Text style={{ color: colors.error, textAlign: 'center', marginVertical: 8 }}>{priceError}</Text>
+        )}
 
-        <View style={styles.actionsContainer}>
+        <View 
+          style={[
+            styles.actionsContainer,
+            darkMode && { 
+              backgroundColor: colors.dark.surface2,
+              borderColor: colors.dark.border,
+              ...Platform.select({
+                ios: {
+                  shadowColor: colors.dark.cardShadow,
+                  shadowOpacity: 0.3,
+                },
+                android: {
+                  elevation: 4,
+                },
+              }),
+            }
+          ]}
+        >
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={[
+              styles.actionButton,
+              { borderBottomColor: darkMode ? colors.dark.border : colors.extraLightGrey }
+            ]}
             onPress={handleFreezeCard}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Freeze card"
+            accessibilityHint="Temporarily disable your card"
           >
             <View style={[styles.actionIcon, { backgroundColor: colors.warning + '20' }]}>
               <Lock size={24} color={colors.warning} />
             </View>
             <View style={styles.actionInfo}>
-              <Text style={styles.actionTitle}>
-                {isCardFrozen ? 'Unfreeze Card' : 'Freeze Card'}
-              </Text>
-              <Text style={styles.actionDescription}>
-                {isCardFrozen ? 'Enable card for payments' : 'Temporarily disable card'}
-              </Text>
+              <Text style={[
+                styles.actionTitle,
+                darkMode && { color: colors.darkText }
+              ]}>Freeze Card</Text>
+              <Text style={[
+                styles.actionDescription,
+                darkMode && { color: colors.darkTextSecondary }
+              ]}>Temporarily disable card</Text>
             </View>
-            <ChevronRight size={20} color={colors.grey} />
+            <ChevronRight size={20} color={darkMode ? colors.darkTextSecondary : colors.grey} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={[styles.actionIcon, { backgroundColor: colors.primary + '20' }]}>
-              <CreditCard size={24} color={colors.primary} />
-            </View>
-            <View style={styles.actionInfo}>
-              <Text style={styles.actionTitle}>Card Details</Text>
-              <Text style={styles.actionDescription}>View card information</Text>
-            </View>
-            <ChevronRight size={20} color={colors.grey} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={[
+              styles.actionButton,
+              { borderBottomColor: darkMode ? colors.dark.border : colors.extraLightGrey }
+            ]}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Security settings"
+            accessibilityHint="Manage card security options"
+          >
             <View style={[styles.actionIcon, { backgroundColor: colors.success + '20' }]}>
               <Shield size={24} color={colors.success} />
             </View>
             <View style={styles.actionInfo}>
-              <Text style={styles.actionTitle}>Security Settings</Text>
-              <Text style={styles.actionDescription}>Manage card security</Text>
+              <Text style={[
+                styles.actionTitle,
+                darkMode && { color: colors.darkText }
+              ]}>Security Settings</Text>
+              <Text style={[
+                styles.actionDescription,
+                darkMode && { color: colors.darkTextSecondary }
+              ]}>Manage card security</Text>
             </View>
-            <ChevronRight size={20} color={colors.grey} />
+            <ChevronRight size={20} color={darkMode ? colors.darkTextSecondary : colors.grey} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.limitsContainer}>
-          <Text style={styles.sectionTitle}>Card Limits</Text>
-          <View style={styles.limitCard}>
+          <Text 
+            style={[
+              styles.sectionTitle,
+              darkMode && { color: colors.darkText }
+            ]}
+            accessible={true}
+            accessibilityRole="header"
+          >Card Limits</Text>
+          <View 
+            style={[
+              styles.limitCard,
+              darkMode && { 
+                backgroundColor: colors.dark.surface2,
+                borderColor: colors.dark.border,
+                ...Platform.select({
+                  ios: {
+                    shadowColor: colors.dark.cardShadow,
+                    shadowOpacity: 0.3,
+                  },
+                  android: {
+                    elevation: 4,
+                  },
+                }),
+              }
+            ]}
+            accessible={true}
+            accessibilityLabel="Daily payment limit information"
+          >
             <View style={styles.limitItem}>
-              <Text style={styles.limitLabel}>Daily Payment Limit</Text>
-              <Text style={styles.limitValue}>$5,000</Text>
-              <View style={styles.limitBar}>
-                <View style={[styles.limitProgress, { width: '45%' }]} />
+              <Text style={[
+                styles.limitLabel,
+                darkMode && { color: colors.darkText }
+              ]}>Daily Payment Limit</Text>
+              <Text style={[
+                styles.limitValue,
+                darkMode && { color: colors.dark.primaryAccent }
+              ]}>$5,000</Text>
+              <View style={[
+                styles.limitBar,
+                darkMode && { backgroundColor: colors.dark.surface3 }
+              ]}>
+                <View style={[
+                  styles.limitProgress,
+                  darkMode && { backgroundColor: colors.dark.primaryAccent },
+                  { width: '45%' }
+                ]} />
               </View>
-              <Text style={styles.limitRemaining}>$2,750 remaining today</Text>
-            </View>
-
-            <View style={styles.limitItem}>
-              <Text style={styles.limitLabel}>ATM Withdrawal Limit</Text>
-              <Text style={styles.limitValue}>$1,000</Text>
-              <View style={styles.limitBar}>
-                <View style={[styles.limitProgress, { width: '20%' }]} />
-              </View>
-              <Text style={styles.limitRemaining}>$800 remaining today</Text>
+              <Text style={[
+                styles.limitRemaining,
+                darkMode && { color: colors.darkTextSecondary }
+              ]}>$2,750 remaining today</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.recentTransactions}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          <View style={styles.transactionCard}>
-            <Text style={styles.emptyTransactions}>No recent card transactions</Text>
+          <Text 
+            style={[
+              styles.sectionTitle,
+              darkMode && { color: colors.darkText }
+            ]}
+            accessible={true}
+            accessibilityRole="header"
+          >Recent Transactions</Text>
+          <View 
+            style={[
+              styles.transactionCard,
+              darkMode && { 
+                backgroundColor: colors.dark.surface2,
+                borderColor: colors.dark.border,
+                ...Platform.select({
+                  ios: {
+                    shadowColor: colors.dark.cardShadow,
+                    shadowOpacity: 0.3,
+                  },
+                  android: {
+                    elevation: 4,
+                  },
+                }),
+              }
+            ]}
+          >
+            <View style={styles.noTransactionsContainer}>
+              <Text style={[
+                styles.noTransactionsText,
+                darkMode && { color: colors.darkTextSecondary }
+              ]}>No recent transactions</Text>
+              <Button
+                title="Make First Payment"
+                onPress={() => {}}
+                style={styles.requestButton}
+                variant="primary"
+                darkMode={darkMode}
+              />
+            </View>
           </View>
         </View>
-
-        <Button
-          title="Request New Card"
-          onPress={() => Alert.alert('Coming Soon', 'This feature will be available soon!')}
-          style={styles.requestButton}
-        />
       </ScrollView>
     </View>
   );
@@ -151,7 +318,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.spacing.xl,
     paddingBottom: layout.spacing.md,
     backgroundColor: colors.white,
-    ...layout.shadow.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.extraLightGrey,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   headerTitle: {
     fontFamily: fonts.semiBold,
@@ -167,7 +346,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
     marginVertical: layout.spacing.xl,
-    ...layout.shadow.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   actionButton: {
     flexDirection: 'row',
@@ -211,7 +400,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: layout.radius.lg,
     padding: layout.spacing.lg,
-    ...layout.shadow.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   limitItem: {
     marginBottom: layout.spacing.lg,
@@ -253,10 +452,15 @@ const styles = StyleSheet.create({
     padding: layout.spacing.xl,
     ...layout.shadow.sm,
   },
-  emptyTransactions: {
+  noTransactionsContainer: {
+    alignItems: 'center',
+    padding: layout.spacing.xl,
+  },
+  noTransactionsText: {
     fontFamily: fonts.regular,
     fontSize: fonts.md,
     color: colors.textSecondary,
+    marginBottom: layout.spacing.lg,
     textAlign: 'center',
   },
   requestButton: {
